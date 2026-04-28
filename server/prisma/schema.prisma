@@ -1,0 +1,219 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ListingStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  DELETED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
+// ─── User ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  name          String
+  avatarUrl     String?
+  bio           String?
+  phone         String?
+  role          Role     @default(USER)
+  emailVerified Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  listings         Listing[]
+  bookingsAsRenter  Booking[]       @relation("RenterBookings")
+  reviewsGiven     Review[]        @relation("ReviewsGiven")
+  reviewsReceived  Review[]        @relation("ReviewsReceived")
+  sentMessages     Message[]       @relation("SentMessages")
+  conversations    Conversation[]  @relation("ConversationParticipants")
+  notifications    Notification[]
+
+  @@map("users")
+}
+
+// ─── Category ─────────────────────────────────────────────────────────────────
+
+model Category {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  slug     String    @unique
+  icon     String?
+  listings Listing[]
+
+  @@map("categories")
+}
+
+// ─── Listing ──────────────────────────────────────────────────────────────────
+
+model Listing {
+  id          String        @id @default(cuid())
+  title       String
+  description String
+  pricePerDay Decimal       @db.Decimal(10, 2)
+  status      ListingStatus @default(DRAFT)
+  images      String[]
+  tags        String[]
+
+  // Location
+  address     String
+  city        String
+  state       String?
+  country     String
+  postalCode  String?
+  latitude    Float
+  longitude   Float
+
+  // Availability
+  minRentalDays Int @default(1)
+  maxRentalDays Int @default(30)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  ownerId    String
+  owner      User      @relation(fields: [ownerId], references: [id])
+  categoryId String
+  category   Category  @relation(fields: [categoryId], references: [id])
+  bookings   Booking[]
+  reviews    Review[]
+  conversations Conversation[]
+
+  @@index([latitude, longitude])
+  @@index([ownerId])
+  @@index([categoryId])
+  @@map("listings")
+}
+
+// ─── Booking ──────────────────────────────────────────────────────────────────
+
+model Booking {
+  id         String        @id @default(cuid())
+  status     BookingStatus @default(PENDING)
+  startDate  DateTime
+  endDate    DateTime
+  totalPrice Decimal       @db.Decimal(10, 2)
+  notes      String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  // Relations
+  listingId String
+  listing   Listing @relation(fields: [listingId], references: [id])
+  renterId  String
+  renter    User    @relation("RenterBookings", fields: [renterId], references: [id])
+  review    Review?
+
+  @@index([listingId])
+  @@index([renterId])
+  @@map("bookings")
+}
+
+// ─── Review ───────────────────────────────────────────────────────────────────
+
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int      // 1–5
+  comment   String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  listingId  String
+  listing    Listing @relation(fields: [listingId], references: [id])
+  bookingId  String  @unique
+  booking    Booking @relation(fields: [bookingId], references: [id])
+  authorId   String
+  author     User    @relation("ReviewsGiven", fields: [authorId], references: [id])
+  subjectId  String
+  subject    User    @relation("ReviewsReceived", fields: [subjectId], references: [id])
+
+  @@index([listingId])
+  @@map("reviews")
+}
+
+// ─── Conversation ─────────────────────────────────────────────────────────────
+
+model Conversation {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Optional: scope a conversation to a specific listing
+  listingId String?
+  listing   Listing?  @relation(fields: [listingId], references: [id])
+
+  participants User[]    @relation("ConversationParticipants")
+  messages     Message[]
+
+  @@map("conversations")
+}
+
+// ─── Message ──────────────────────────────────────────────────────────────────
+
+model Message {
+  id             String        @id @default(cuid())
+  body           String
+  status         MessageStatus @default(SENT)
+  createdAt      DateTime      @default(now())
+
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  senderId       String
+  sender         User         @relation("SentMessages", fields: [senderId], references: [id])
+
+  @@index([conversationId])
+  @@map("messages")
+}
+
+// ─── Notification ─────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String   // e.g. "booking_request", "message", "review"
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  data      Json?
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("notifications")
+}
