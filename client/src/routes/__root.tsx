@@ -19,7 +19,7 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'PeerRent – Hyper-local P2P Rental Marketplace',
+        title: 'Vastu-Rent – Hyper-local P2P Rental Marketplace',
       },
     ],
     links: [

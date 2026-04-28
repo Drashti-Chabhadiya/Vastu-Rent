@@ -179,10 +179,19 @@ function ListingDetailPage() {
               )}
             </div>
             <div className="flex-1">
-              <p className="font-semibold text-[var(--sea-ink)]">
+              <p className="font-semibold text-[var(--sea-ink)] flex items-center gap-2">
                 {listing.owner.name}
+                {listing.owner.governmentIdVerified && (
+                  <span className="bg-green-100 text-green-800 text-[10px] px-1.5 py-0.5 rounded-full" title="Government ID Verified">
+                    🛡️ Verified ID
+                  </span>
+                )}
               </p>
-              <p className="text-xs text-[var(--sea-ink-soft)]">Item owner</p>
+              <div className="flex gap-1 text-[10px] text-[var(--sea-ink-soft)]">
+                Item owner • 
+                <span className={listing.owner.phoneVerified ? "text-green-600" : "text-gray-400"}>📞 Phone</span> • 
+                <span className={listing.owner.emailVerified ? "text-green-600" : "text-gray-400"}>✉️ Email</span>
+              </div>
             </div>
             {!isOwner && isAuthenticated && (
               <button

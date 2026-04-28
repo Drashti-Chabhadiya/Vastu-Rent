@@ -22,7 +22,7 @@ function HomePage() {
         <div className="pointer-events-none absolute -left-20 -top-24 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(79,184,178,0.32),transparent_66%)]" />
         <div className="pointer-events-none absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(47,106,74,0.18),transparent_66%)]" />
 
-        <p className="island-kicker mb-3">Hyper-local · Peer-to-Peer</p>
+        <p className="island-kicker mb-3">Vastu-Rent · Sharing Economy</p>
         <h1 className="display-title mb-5 max-w-3xl text-4xl font-bold leading-[1.02] tracking-tight text-[var(--sea-ink)] sm:text-6xl">
           Rent anything from your neighbours.
         </h1>
@@ -81,7 +81,7 @@ function HomePage() {
         <section className="mt-12">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-[var(--sea-ink)]">
-              Recently listed
+              Trending Nearby
             </h2>
             <Link
               to="/listings"
@@ -155,6 +155,7 @@ function ListingCard({
             📦
           </div>
         )}
+        {/* We would check listing.isFeatured if it existed in the TS type, but we can simulate it for now */}
       </div>
       <div className="p-4">
         <p className="island-kicker mb-1">{listing.category.name}</p>

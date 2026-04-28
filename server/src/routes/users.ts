@@ -7,6 +7,8 @@ const updateProfileSchema = z.object({
   bio: z.string().max(500).optional(),
   phone: z.string().optional(),
   avatarUrl: z.string().url().optional(),
+  socialLink: z.string().url().optional(),
+  governmentIdUrl: z.string().url().optional(),
 })
 
 const userRoutes: FastifyPluginAsync = async (fastify) => {
@@ -22,6 +24,10 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
         avatarUrl: true,
         bio: true,
         createdAt: true,
+        emailVerified: true,
+        phoneVerified: true,
+        governmentIdVerified: true,
+        socialLink: true,
         listings: {
           where: { status: 'ACTIVE' },
           select: {
@@ -70,6 +76,8 @@ const userRoutes: FastifyPluginAsync = async (fastify) => {
           avatarUrl: true,
           bio: true,
           phone: true,
+          socialLink: true,
+          governmentIdUrl: true,
           updatedAt: true,
         },
       })

@@ -32,7 +32,7 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-export default function DashboardPage() {
+function DashboardPage() {
   const { user, isAuthenticated, clearAuth } = useAuth()
   const navigate = useNavigate()
   const { mine, ownerBookings } = Route.useLoaderData()
@@ -70,6 +70,42 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+
+      {/* Trust & Verification Section */}
+      <section className="mb-10 island-shell rounded-2xl p-6">
+        <h2 className="mb-4 text-lg font-semibold text-[var(--sea-ink)]">
+          Trust & Verification
+        </h2>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="flex items-center gap-3 rounded-xl border border-[var(--line)] p-4">
+            <span className="text-2xl">✉️</span>
+            <div>
+              <p className="text-sm font-semibold text-[var(--sea-ink)]">Email</p>
+              <p className={`text-xs ${user?.emailVerified ? 'text-green-600' : 'text-gray-400'}`}>
+                {user?.emailVerified ? 'Verified' : 'Unverified'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 rounded-xl border border-[var(--line)] p-4">
+            <span className="text-2xl">📞</span>
+            <div>
+              <p className="text-sm font-semibold text-[var(--sea-ink)]">Phone</p>
+              <p className={`text-xs ${user?.phoneVerified ? 'text-green-600' : 'text-[var(--lagoon-deep)] cursor-pointer hover:underline'}`}>
+                {user?.phoneVerified ? 'Verified' : 'Add Phone Number'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 rounded-xl border border-[var(--line)] p-4 bg-[var(--sand)]">
+            <span className="text-2xl">🛡️</span>
+            <div>
+              <p className="text-sm font-semibold text-[var(--sea-ink)]">Govt ID (Aadhaar)</p>
+              <p className={`text-xs ${user?.governmentIdVerified ? 'text-green-600' : 'text-[var(--lagoon-deep)] cursor-pointer hover:underline'}`}>
+                {user?.governmentIdVerified ? 'Verified' : 'Verify Now (Required for high value items)'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* My rentals (as renter) */}
       <section className="mb-10">

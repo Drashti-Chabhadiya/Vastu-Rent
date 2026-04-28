@@ -46,6 +46,11 @@ export interface AuthUser {
   email: string
   role: string
   avatarUrl?: string
+  phoneVerified?: boolean
+  emailVerified?: boolean
+  governmentIdVerified?: boolean
+  governmentIdUrl?: string
+  socialLink?: string
 }
 
 export interface AuthResponse {
@@ -88,7 +93,14 @@ export interface Listing {
   minRentalDays: number
   maxRentalDays: number
   createdAt: string
-  owner: { id: string; name: string; avatarUrl?: string }
+  owner: { 
+    id: string; 
+    name: string; 
+    avatarUrl?: string;
+    phoneVerified?: boolean;
+    emailVerified?: boolean;
+    governmentIdVerified?: boolean;
+  }
   category: { id: string; name: string; slug: string; icon?: string }
   _count?: { reviews: number; bookings?: number }
 }

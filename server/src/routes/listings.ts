@@ -110,7 +110,7 @@ const listingRoutes: FastifyPluginAsync = async (fastify) => {
         orderBy: geoIds ? undefined : { createdAt: 'desc' },
         include: {
           category: { select: { id: true, name: true, slug: true, icon: true } },
-          owner: { select: { id: true, name: true, avatarUrl: true } },
+          owner: { select: { id: true, name: true, avatarUrl: true, emailVerified: true, phoneVerified: true, governmentIdVerified: true } },
           _count: { select: { reviews: true } },
         },
       }),
@@ -146,6 +146,9 @@ const listingRoutes: FastifyPluginAsync = async (fastify) => {
             avatarUrl: true,
             bio: true,
             createdAt: true,
+            emailVerified: true,
+            phoneVerified: true,
+            governmentIdVerified: true,
           },
         },
         reviews: {
