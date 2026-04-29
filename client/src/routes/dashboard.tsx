@@ -733,4 +733,3 @@ function VerifyCard({
     </div>
   )
 }
-p
