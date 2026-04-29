@@ -1,6 +1,24 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '../lib/prisma.js'
+import { getIO } from '../lib/socket-io.js'
+import type { Prisma } from '@prisma/client'
+
+// ── Helper: persist a DB notification and push it via socket ─────────────────
+async function pushNotification(
+  userId: string,
+  type: string,
+  title: string,
+  body: string,
+  data?: Record<string, unknown>,
+) {
+  // Persist to DB so the user sees it even if they're offline
+  await prisma.notification.create({
+    data: { userId, type, title, body, data: (data ?? {}) as Prisma.InputJsonValue },
+  })
+  // Push in real-time if the user is connected
+  getIO()?.to(`user:${userId}`).emit('notification:new', { type, title, body, data })
+}
 
 const createBookingSchema = z.object({
   listingId: z.string(),
@@ -26,6 +44,7 @@ const bookingRoutes: FastifyPluginAsync = async (fastify) => {
               images: true,
               city: true,
               pricePerDay: true,
+              securityDeposit: true,
             },
           },
         },
@@ -43,8 +62,17 @@ const bookingRoutes: FastifyPluginAsync = async (fastify) => {
         where: { listing: { ownerId: request.user.sub } },
         orderBy: { createdAt: 'desc' },
         include: {
-          listing: { select: { id: true, title: true, images: true } },
-          renter: { select: { id: true, name: true, avatarUrl: true } },
+          listing: {
+            select: {
+              id: true,
+              title: true,
+              images: true,
+              city: true,
+              pricePerDay: true,
+              securityDeposit: true,
+            },
+          },
+          renter: { select: { id: true, name: true, avatarUrl: true, phone: true } },
         },
       })
       return reply.send(bookings)
@@ -138,6 +166,20 @@ const bookingRoutes: FastifyPluginAsync = async (fastify) => {
         },
       })
 
+      // ── Notify the listing owner ─────────────────────────────────────────
+      const renter = await prisma.user.findUnique({
+        where: { id: request.user.sub },
+        select: { name: true },
+      })
+
+      await pushNotification(
+        listing.ownerId,
+        'booking_request',
+        '📦 New Rental Request',
+        `${renter?.name ?? 'Someone'} wants to rent "${listing.title}" from ${start.toLocaleDateString('en-IN')} to ${end.toLocaleDateString('en-IN')}.`,
+        { bookingId: booking.id, listingId: listing.id },
+      )
+
       return reply.code(201).send(booking)
     },
   )
@@ -180,7 +222,54 @@ const bookingRoutes: FastifyPluginAsync = async (fastify) => {
       const updated = await prisma.booking.update({
         where: { id },
         data: { status: status as never },
+        include: {
+          listing: { select: { id: true, title: true, ownerId: true } },
+          renter: { select: { id: true, name: true } },
+        },
       })
+
+      // ── When COMPLETED: listing is available again ────────────────────────
+      // The listing status stays ACTIVE throughout (it's the booking status
+      // that tracks the rental lifecycle), but we explicitly ensure it's ACTIVE
+      // in case it was paused during the rental.
+      if (status === 'COMPLETED') {
+        await prisma.listing.update({
+          where: { id: booking.listingId },
+          data: { status: 'ACTIVE' },
+        })
+      }
+
+      // ── Notify the relevant party about the status change ────────────────
+      const { listing: bl, renter: br } = updated
+
+      if (status === 'CONFIRMED') {
+        await pushNotification(
+          br.id,
+          'booking_confirmed',
+          '✅ Booking Confirmed!',
+          `Your rental of "${bl.title}" has been confirmed by the owner.`,
+          { bookingId: id, listingId: bl.id },
+        )
+      } else if (status === 'CANCELLED') {
+        // Notify whoever didn't cancel
+        const notifyId = isOwner ? br.id : bl.ownerId
+        const cancelledBy = isOwner ? 'The owner' : 'The renter'
+        await pushNotification(
+          notifyId,
+          'booking_cancelled',
+          '❌ Booking Cancelled',
+          `${cancelledBy} cancelled the rental of "${bl.title}".`,
+          { bookingId: id, listingId: bl.id },
+        )
+      } else if (status === 'COMPLETED') {
+        await pushNotification(
+          br.id,
+          'booking_completed',
+          '🎉 Rental Completed',
+          `Your rental of "${bl.title}" is complete. Leave a review!`,
+          { bookingId: id, listingId: bl.id },
+        )
+      }
 
       return reply.send(updated)
     },

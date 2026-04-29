@@ -1,238 +1,720 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { bookings as bookingsApi } from '../lib/api'
+import { useState } from 'react'
+import { bookings as bookingsApi, type Booking, admin, categories, type AdminListing, type Category } from '../lib/api'
 import { useAuth } from '../hooks/useAuth'
+import AdminPanel from '../components/AdminPanel'
 
 export const Route = createFileRoute('/dashboard')({
   loader: async () => {
-    const [mine, ownerBookings] = await Promise.all([
-      bookingsApi.mine().catch(() => []),
-      bookingsApi.ownerBookings().catch(() => []),
+    const [mine, ownerBookings, myListings, cats] = await Promise.all([
+      bookingsApi.mine().catch(() => [] as Booking[]),
+      bookingsApi.ownerBookings().catch(() => [] as Booking[]),
+      admin.myListings().catch(() => [] as AdminListing[]),
+      categories.list().catch(() => [] as Category[]),
     ])
-    return { mine, ownerBookings }
+    return { mine, ownerBookings, myListings, cats }
   },
   component: DashboardPage,
 })
 
+// ── Status colours ────────────────────────────────────────────────────────────
+
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-800',
-  CONFIRMED: 'bg-blue-100 text-blue-800',
-  ACTIVE: 'bg-green-100 text-green-800',
-  COMPLETED: 'bg-[var(--sand)] text-[var(--sea-ink-soft)]',
-  CANCELLED: 'bg-red-50 text-red-600',
-  DISPUTED: 'bg-orange-100 text-orange-700',
+  PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  CONFIRMED: 'bg-blue-100 text-blue-800 border-blue-200',
+  ACTIVE: 'bg-green-100 text-green-800 border-green-200',
+  COMPLETED: 'bg-[var(--sand)] text-[var(--sea-ink-soft)] border-[var(--line)]',
+  CANCELLED: 'bg-red-100 text-red-700 border-red-200',
+  DISPUTED: 'bg-orange-100 text-orange-800 border-orange-200',
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const cls = STATUS_COLORS[status] ?? 'bg-gray-100 text-gray-600 border-gray-200'
   return (
-    <span
-      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_COLORS[status] ?? 'bg-gray-100 text-gray-600'}`}
-    >
-      {status}
+    <span className={'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ' + cls}>
+      {status.charAt(0) + status.slice(1).toLowerCase()}
     </span>
   )
 }
 
+// ── ActionButton ──────────────────────────────────────────────────────────────
+
+function ActionButton({
+  bookingId,
+  targetStatus,
+  label,
+  className,
+  onSuccess,
+}: {
+  bookingId: string
+  targetStatus: string
+  label: string
+  className?: string
+  onSuccess: (id: string, status: string) => void
+}) {
+  const [loading, setLoading] = useState(false)
+
+  async function handleClick() {
+    setLoading(true)
+    try {
+      await bookingsApi.updateStatus(bookingId, targetStatus)
+      onSuccess(bookingId, targetStatus)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={loading}
+      className={'rounded-full px-4 py-1.5 text-xs font-semibold transition hover:-translate-y-0.5 disabled:opacity-60 ' + (className ?? '')}
+    >
+      {loading ? 'Updating…' : label}
+    </button>
+  )
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function daysRemaining(endDate: string): number {
+  return Math.max(
+    0,
+    Math.ceil((new Date(endDate).getTime() - Date.now()) / 86_400_000),
+  )
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+function formatINR(amount: number): string {
+  return '\u20b9' + amount.toLocaleString('en-IN')
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
 function DashboardPage() {
+  const { mine, ownerBookings: ownerData, myListings: initialListings, cats } = Route.useLoaderData()
   const { user, isAuthenticated, clearAuth } = useAuth()
   const navigate = useNavigate()
-  const { mine, ownerBookings } = Route.useLoaderData()
+
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN'
+
+  const [activeTab, setActiveTab] = useState<'renter' | 'provider' | 'history' | 'admin'>('renter')
+  const [bookingsList, setBookingsList] = useState<Booking[]>(mine)
+  const [ownerList, setOwnerList] = useState<Booking[]>(ownerData)
 
   if (!isAuthenticated) {
     navigate({ to: '/auth/login' })
     return null
   }
 
+  // ── Derived counts ──────────────────────────────────────────────────────────
+  const activeRents = bookingsList.filter(
+    (b) => b.status === 'ACTIVE' || b.status === 'CONFIRMED',
+  ).length
+
+  const itemsOut = ownerList.filter((b) => b.status === 'ACTIVE').length
+
+  const pendingRequests = ownerList.filter((b) => b.status === 'PENDING').length
+
+  const totalEarned = ownerList
+    .filter((b) => b.status === 'COMPLETED')
+    .reduce((sum, b) => sum + Number(b.totalPrice), 0)
+
+  // ── State updater ───────────────────────────────────────────────────────────
+  function handleStatusUpdate(id: string, status: string) {
+    setBookingsList((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, status } : b)),
+    )
+    setOwnerList((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, status } : b)),
+    )
+  }
+
+  // ── Sections ────────────────────────────────────────────────────────────────
+  const renterActive = bookingsList.filter(
+    (b) => b.status === 'ACTIVE' || b.status === 'CONFIRMED',
+  )
+  const renterPending = bookingsList.filter((b) => b.status === 'PENDING')
+
+  const providerActive = ownerList.filter((b) => b.status === 'ACTIVE')
+  const providerPending = ownerList.filter((b) => b.status === 'PENDING')
+  const providerConfirmed = ownerList.filter((b) => b.status === 'CONFIRMED')
+
+  const historyItems = [
+    ...bookingsList
+      .filter((b) => b.status === 'COMPLETED' || b.status === 'CANCELLED')
+      .map((b) => ({ ...b, role: 'Rented' as const })),
+    ...ownerList
+      .filter((b) => b.status === 'COMPLETED' || b.status === 'CANCELLED')
+      .map((b) => ({ ...b, role: 'Lent' as const })),
+  ].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  )
+
   return (
-    <main className="page-wrap px-4 pb-16 pt-8">
-      {/* Header */}
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+    <main className="page-wrap px-4 pb-20 pt-8">
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="island-kicker mb-1">Dashboard</p>
           <h1 className="display-title text-3xl font-bold text-[var(--sea-ink)]">
-            Welcome, {user?.name}
+            Welcome back, {user?.name?.split(' ')[0]}
+            {isSuperAdmin && (
+              <span className="ml-2 rounded-full bg-purple-600 px-2.5 py-0.5 text-sm font-semibold text-white">
+                Super Admin
+              </span>
+            )}
+            {user?.role === 'ADMIN' && !isSuperAdmin && (
+              <span className="ml-2 rounded-full bg-[var(--lagoon-deep)] px-2.5 py-0.5 text-sm font-semibold text-white">
+                Admin
+              </span>
+            )}
           </h1>
+          <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
+            Manage your rentals and listings
+          </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
           <Link
             to="/listings/new"
-            className="rounded-full border border-[rgba(50,143,151,0.3)] bg-[rgba(79,184,178,0.14)] px-5 py-2.5 text-sm font-semibold text-[var(--lagoon-deep)] no-underline transition hover:-translate-y-0.5"
+            className="rounded-full bg-[var(--lagoon-deep)] px-5 py-2.5 text-sm font-semibold text-white no-underline transition hover:-translate-y-0.5 hover:bg-[var(--lagoon)]"
           >
             + List an Item
           </Link>
           <button
             onClick={() => {
               clearAuth()
-              navigate({ to: '/' })
+              navigate({ to: '/', search: { accessDenied: undefined } })
             }}
-            className="rounded-full border border-[var(--line)] bg-[var(--surface-strong)] px-5 py-2.5 text-sm font-semibold text-[var(--sea-ink-soft)] transition hover:-translate-y-0.5"
+            className="rounded-full border border-[var(--line)] bg-[var(--surface)] px-5 py-2.5 text-sm font-semibold text-[var(--sea-ink-soft)] transition hover:border-red-300 hover:text-red-600"
           >
             Sign out
           </button>
         </div>
       </div>
 
-      {/* Trust & Verification Section */}
-      <section className="mb-10 island-shell rounded-2xl p-6">
-        <h2 className="mb-4 text-lg font-semibold text-[var(--sea-ink)]">
-          Trust & Verification
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="flex items-center gap-3 rounded-xl border border-[var(--line)] p-4">
-            <span className="text-2xl">✉️</span>
-            <div>
-              <p className="text-sm font-semibold text-[var(--sea-ink)]">Email</p>
-              <p className={`text-xs ${user?.emailVerified ? 'text-green-600' : 'text-gray-400'}`}>
-                {user?.emailVerified ? 'Verified' : 'Unverified'}
-              </p>
-            </div>
+      {/* ── Stats ───────────────────────────────────────────────────────────── */}
+      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {[
+          { label: 'Active Rents', value: activeRents, icon: '��' },
+          { label: 'Items Out', value: itemsOut, icon: '📦' },
+          { label: 'Pending Requests', value: pendingRequests, icon: '⏳' },
+          {
+            label: 'Total Earned',
+            value: formatINR(totalEarned),
+            icon: '💰',
+          },
+        ].map((stat) => (
+          <div
+            key={stat.label}
+            className="island-shell rounded-2xl p-5"
+          >
+            <p className="mb-1 text-2xl">{stat.icon}</p>
+            <p className="text-xl font-bold text-[var(--sea-ink)]">
+              {stat.value}
+            </p>
+            <p className="text-xs text-[var(--sea-ink-soft)]">{stat.label}</p>
           </div>
-          <div className="flex items-center gap-3 rounded-xl border border-[var(--line)] p-4">
-            <span className="text-2xl">📞</span>
-            <div>
-              <p className="text-sm font-semibold text-[var(--sea-ink)]">Phone</p>
-              <p className={`text-xs ${user?.phoneVerified ? 'text-green-600' : 'text-[var(--lagoon-deep)] cursor-pointer hover:underline'}`}>
-                {user?.phoneVerified ? 'Verified' : 'Add Phone Number'}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-xl border border-[var(--line)] p-4 bg-[var(--sand)]">
-            <span className="text-2xl">🛡️</span>
-            <div>
-              <p className="text-sm font-semibold text-[var(--sea-ink)]">Govt ID (Aadhaar)</p>
-              <p className={`text-xs ${user?.governmentIdVerified ? 'text-green-600' : 'text-[var(--lagoon-deep)] cursor-pointer hover:underline'}`}>
-                {user?.governmentIdVerified ? 'Verified' : 'Verify Now (Required for high value items)'}
-              </p>
-            </div>
-          </div>
+        ))}
+      </div>
+
+      {/* ── Trust & Verification ────────────────────────────────────────────── */}
+      <div className="island-shell mb-8 rounded-2xl p-5">
+        <p className="island-kicker mb-3">Trust &amp; Verification</p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <VerifyCard
+            icon="✉️"
+            label="Email"
+            verified={!!user?.emailVerified}
+            value={user?.email}
+          />
+          <VerifyCard
+            icon="📞"
+            label="Phone"
+            verified={!!user?.phoneVerified}
+            value={user?.phone ?? 'Not added'}
+          />
+          <VerifyCard
+            icon="📍"
+            label="Neighbourhood"
+            verified={!!user?.neighborhood}
+            value={user?.neighborhood ?? 'Not added'}
+          />
+          <VerifyCard
+            icon="🛡️"
+            label="Govt ID"
+            verified={!!user?.governmentIdVerified}
+            value={user?.governmentIdVerified ? 'Verified' : 'Not verified'}
+          />
         </div>
-      </section>
+      </div>
 
-      {/* My rentals (as renter) */}
-      <section className="mb-10">
-        <h2 className="mb-4 text-lg font-semibold text-[var(--sea-ink)]">
-          My Rentals
-        </h2>
-        {mine.length === 0 ? (
-          <div className="island-shell rounded-2xl p-8 text-center text-[var(--sea-ink-soft)]">
-            <p className="text-3xl">🛒</p>
-            <p className="mt-2 font-semibold">No rentals yet</p>
-            <Link
-              to="/listings"
-              className="mt-2 inline-block text-sm font-semibold text-[var(--lagoon-deep)]"
-            >
-              Browse listings →
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {mine.map((b) => (
-              <div
-                key={b.id}
-                className="island-shell flex flex-wrap items-center gap-4 rounded-2xl p-4"
+      {/* ── Tabs ────────────────────────────────────────────────────────────── */}
+      <div className="mb-6 flex gap-1 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-1">
+        {(
+          [
+            { id: 'renter', label: 'My Rentals', count: activeRents },
+            { id: 'provider', label: 'Items Out on Rent', count: itemsOut },
+            { id: 'history', label: 'History', count: null },
+            ...(isAdmin ? [{ id: 'admin', label: '⚙️ Admin Panel', count: null }] : []),
+          ] as const
+        ).map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as typeof activeTab)}
+            className={
+              'flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition ' +
+              (activeTab === tab.id
+                ? tab.id === 'admin'
+                  ? 'bg-purple-600 text-white shadow-sm'
+                  : 'bg-[var(--lagoon-deep)] text-white shadow-sm'
+                : 'text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]')
+            }
+          >
+            {tab.label}
+            {tab.count !== null && tab.count > 0 && (
+              <span
+                className={
+                  'rounded-full px-1.5 py-0.5 text-[10px] font-bold ' +
+                  (activeTab === tab.id
+                    ? 'bg-white/20 text-white'
+                    : 'bg-[var(--lagoon-deep)] text-white')
+                }
               >
-                <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-[var(--sand)]">
-                  {b.listing.images[0] ? (
-                    <img
-                      src={b.listing.images[0]}
-                      alt={b.listing.title}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-2xl">
-                      📦
+                {tab.count}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Renter Tab ──────────────────────────────────────────────────────── */}
+      {activeTab === 'renter' && (
+        <div className="space-y-8">
+          {/* Active / Confirmed */}
+          {renterActive.length > 0 ? (
+            <section>
+              <h2 className="mb-4 text-lg font-semibold text-[var(--sea-ink)]">
+                Active Rentals
+              </h2>
+              <div className="space-y-4">
+                {renterActive.map((b) => {
+                  const days = daysRemaining(b.endDate)
+                  return (
+                    <div key={b.id} className="island-shell rounded-2xl p-5">
+                      <div className="flex gap-4">
+                        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-[var(--sand)]">
+                          {b.listing.images[0] ? (
+                            <img
+                              src={b.listing.images[0]}
+                              alt={b.listing.title}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-3xl">
+                              📦
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div>
+                              <p className="font-semibold text-[var(--sea-ink)]">
+                                {b.listing.title}
+                              </p>
+                              <p className="text-xs text-[var(--sea-ink-soft)]">
+                                📍 {b.listing.city}
+                              </p>
+                            </div>
+                            <StatusBadge status={b.status} />
+                          </div>
+                          <p className="mt-2 text-xs text-[var(--sea-ink-soft)]">
+                            {formatDate(b.startDate)} → {formatDate(b.endDate)}
+                          </p>
+                          {b.status === 'ACTIVE' && (
+                            <p className="mt-1 text-xs font-semibold text-green-700">
+                              ⏱ {days} day{days !== 1 ? 's' : ''} remaining
+                            </p>
+                          )}
+                          {b.status === 'CONFIRMED' && (
+                            <p className="mt-1 text-xs text-blue-600">
+                              🤝 Awaiting handover from owner
+                            </p>
+                          )}
+                          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+                            <span className="font-bold text-[var(--sea-ink)]">
+                              {formatINR(Number(b.totalPrice))}
+                            </span>
+                            {b.listing.securityDeposit &&
+                              Number(b.listing.securityDeposit) > 0 && (
+                                <span className="text-xs text-[var(--sea-ink-soft)]">
+                                  🔒 {formatINR(Number(b.listing.securityDeposit))} deposit
+                                </span>
+                              )}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <Link
-                    to="/listings/$id"
-                    params={{ id: b.listing.id }}
-                    className="font-semibold text-[var(--sea-ink)] no-underline hover:underline"
-                  >
-                    {b.listing.title}
-                  </Link>
-                  <p className="text-xs text-[var(--sea-ink-soft)]">
-                    {new Date(b.startDate).toLocaleDateString()} →{' '}
-                    {new Date(b.endDate).toLocaleDateString()}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-[var(--lagoon-deep)]">
-                    ${Number(b.totalPrice).toFixed(2)}
-                  </span>
-                  <StatusBadge status={b.status} />
-                </div>
+                  )
+                })}
               </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Bookings on my listings (as owner) */}
-      <section>
-        <h2 className="mb-4 text-lg font-semibold text-[var(--sea-ink)]">
-          Booking Requests
-        </h2>
-        {ownerBookings.length === 0 ? (
-          <div className="island-shell rounded-2xl p-8 text-center text-[var(--sea-ink-soft)]">
-            <p className="text-3xl">📭</p>
-            <p className="mt-2 font-semibold">No booking requests yet</p>
-            <Link
-              to="/listings/new"
-              className="mt-2 inline-block text-sm font-semibold text-[var(--lagoon-deep)]"
-            >
-              List an item →
-            </Link>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {ownerBookings.map((b) => (
-              <div
-                key={b.id}
-                className="island-shell flex flex-wrap items-center gap-4 rounded-2xl p-4"
+            </section>
+          ) : (
+            <div className="island-shell rounded-2xl p-10 text-center">
+              <p className="mb-2 text-4xl">🏠</p>
+              <p className="font-semibold text-[var(--sea-ink)]">
+                No active rentals
+              </p>
+              <p className="mb-4 text-sm text-[var(--sea-ink-soft)]">
+                Find something to rent nearby
+              </p>
+              <Link
+                to="/listings"
+                className="rounded-full bg-[var(--lagoon-deep)] px-5 py-2.5 text-sm font-semibold text-white no-underline transition hover:-translate-y-0.5"
               >
-                <div className="flex-1">
-                  <p className="font-semibold text-[var(--sea-ink)]">
-                    {b.listing.title}
-                  </p>
-                  <p className="text-xs text-[var(--sea-ink-soft)]">
-                    Renter: {b.renter?.name} ·{' '}
-                    {new Date(b.startDate).toLocaleDateString()} →{' '}
-                    {new Date(b.endDate).toLocaleDateString()}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-[var(--lagoon-deep)]">
-                    ${Number(b.totalPrice).toFixed(2)}
-                  </span>
-                  <StatusBadge status={b.status} />
-                  {b.status === 'PENDING' && <ConfirmButton bookingId={b.id} />}
-                </div>
+                Browse listings
+              </Link>
+            </div>
+          )}
+
+          {/* Pending */}
+          {renterPending.length > 0 && (
+            <section>
+              <h2 className="mb-4 text-lg font-semibold text-[var(--sea-ink)]">
+                Pending Requests
+              </h2>
+              <div className="space-y-4">
+                {renterPending.map((b) => (
+                  <div key={b.id} className="island-shell rounded-2xl p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-[var(--sea-ink)]">
+                          {b.listing.title}
+                        </p>
+                        <p className="text-xs text-[var(--sea-ink-soft)]">
+                          {formatDate(b.startDate)} → {formatDate(b.endDate)}
+                        </p>
+                        <p className="mt-1 text-xs text-yellow-700">
+                          ⏳ Awaiting owner confirmation
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-[var(--sea-ink)]">
+                          {formatINR(Number(b.totalPrice))}
+                        </span>
+                        <ActionButton
+                          bookingId={b.id}
+                          targetStatus="CANCELLED"
+                          label="Cancel"
+                          className="border border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
+                          onSuccess={handleStatusUpdate}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+            </section>
+          )}
+        </div>
+      )}
+
+      {/* ── Provider Tab ────────────────────────────────────────────────────── */}
+      {activeTab === 'provider' && (
+        <div className="space-y-8">
+          {ownerList.length === 0 ? (
+            <div className="island-shell rounded-2xl p-10 text-center">
+              <p className="mb-2 text-4xl">📦</p>
+              <p className="font-semibold text-[var(--sea-ink)]">
+                No bookings for your items yet
+              </p>
+              <p className="mb-4 text-sm text-[var(--sea-ink-soft)]">
+                List an item to start earning
+              </p>
+              <Link
+                to="/listings/new"
+                className="rounded-full bg-[var(--lagoon-deep)] px-5 py-2.5 text-sm font-semibold text-white no-underline transition hover:-translate-y-0.5"
+              >
+                List an Item
+              </Link>
+            </div>
+          ) : (
+            <>
+              {/* Items currently out */}
+              {providerActive.length > 0 && (
+                <section>
+                  <h2 className="mb-4 text-lg font-semibold text-[var(--sea-ink)]">
+                    Items Out on Rent
+                  </h2>
+                  <div className="space-y-4">
+                    {providerActive.map((b) => {
+                      const waPhone = b.renter?.phone?.replace(/\D/g, '') ?? ''
+                      const waMsg = encodeURIComponent(
+                        'Hi, regarding your rental of ' + b.listing.title + ' on Vastu-Rent.',
+                      )
+                      const waUrl = waPhone
+                        ? 'https://wa.me/' + waPhone + '?text=' + waMsg
+                        : null
+                      return (
+                        <div key={b.id} className="island-shell rounded-2xl p-5">
+                          <div className="flex gap-4">
+                            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-[var(--sand)]">
+                              {b.listing.images[0] ? (
+                                <img
+                                  src={b.listing.images[0]}
+                                  alt={b.listing.title}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full items-center justify-center text-3xl">
+                                  📦
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-[var(--sea-ink)]">
+                                {b.listing.title}
+                              </p>
+                              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--sea-ink-soft)]">
+                                <span>👤 {b.renter?.name ?? 'Unknown'}</span>
+                                {b.renter?.phone && (
+                                  <>
+                                    <span>·</span>
+                                    <span>{b.renter.phone}</span>
+                                    {waUrl && (
+                                      <a
+                                        href={waUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-[#25D366] no-underline hover:underline"
+                                      >
+                                        💬 WhatsApp
+                                      </a>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                              <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
+                                {formatDate(b.startDate)} → {formatDate(b.endDate)}
+                              </p>
+                              <div className="mt-2 flex flex-wrap items-center gap-3">
+                                <span className="font-bold text-[var(--sea-ink)]">
+                                  {formatINR(Number(b.totalPrice))}
+                                </span>
+                                {b.listing.securityDeposit &&
+                                  Number(b.listing.securityDeposit) > 0 && (
+                                    <span className="text-xs text-amber-700">
+                                      🔒 Remember to refund {formatINR(Number(b.listing.securityDeposit))} deposit
+                                    </span>
+                                  )}
+                              </div>
+                              <div className="mt-3">
+                                <ActionButton
+                                  bookingId={b.id}
+                                  targetStatus="COMPLETED"
+                                  label="Return Confirmed"
+                                  className="bg-[var(--lagoon-deep)] text-white hover:bg-[var(--lagoon)]"
+                                  onSuccess={handleStatusUpdate}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {/* Pending requests */}
+              {providerPending.length > 0 && (
+                <section>
+                  <h2 className="mb-4 text-lg font-semibold text-[var(--sea-ink)]">
+                    Pending Requests
+                  </h2>
+                  <div className="space-y-4">
+                    {providerPending.map((b) => (
+                      <div key={b.id} className="island-shell rounded-2xl p-5">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-[var(--sea-ink)]">
+                              {b.listing.title}
+                            </p>
+                            <p className="text-xs text-[var(--sea-ink-soft)]">
+                              👤 {b.renter?.name ?? 'Unknown'}
+                            </p>
+                            <p className="text-xs text-[var(--sea-ink-soft)]">
+                              {formatDate(b.startDate)} → {formatDate(b.endDate)}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-bold text-[var(--sea-ink)]">
+                              {formatINR(Number(b.totalPrice))}
+                            </span>
+                            <ActionButton
+                              bookingId={b.id}
+                              targetStatus="CONFIRMED"
+                              label="Confirm"
+                              className="bg-[var(--lagoon-deep)] text-white hover:bg-[var(--lagoon)]"
+                              onSuccess={handleStatusUpdate}
+                            />
+                            <ActionButton
+                              bookingId={b.id}
+                              targetStatus="CANCELLED"
+                              label="Decline"
+                              className="border border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
+                              onSuccess={handleStatusUpdate}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Confirmed but not yet active */}
+              {providerConfirmed.length > 0 && (
+                <section>
+                  <h2 className="mb-4 text-lg font-semibold text-[var(--sea-ink)]">
+                    Confirmed — Awaiting Handover
+                  </h2>
+                  <div className="space-y-4">
+                    {providerConfirmed.map((b) => (
+                      <div key={b.id} className="island-shell rounded-2xl p-5">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-[var(--sea-ink)]">
+                              {b.listing.title}
+                            </p>
+                            <p className="text-xs text-[var(--sea-ink-soft)]">
+                              👤 {b.renter?.name ?? 'Unknown'}
+                            </p>
+                            <p className="text-xs text-[var(--sea-ink-soft)]">
+                              {formatDate(b.startDate)} → {formatDate(b.endDate)}
+                            </p>
+                          </div>
+                          <ActionButton
+                            bookingId={b.id}
+                            targetStatus="ACTIVE"
+                            label="Mark as Active"
+                            className="bg-green-600 text-white hover:bg-green-500"
+                            onSuccess={handleStatusUpdate}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── History Tab ─────────────────────────────────────────────────────── */}
+      {activeTab === 'history' && (
+        <div>
+          {historyItems.length === 0 ? (
+            <div className="island-shell rounded-2xl p-10 text-center">
+              <p className="mb-2 text-4xl">📋</p>
+              <p className="font-semibold text-[var(--sea-ink)]">
+                No history yet
+              </p>
+              <p className="text-sm text-[var(--sea-ink-soft)]">
+                Completed and cancelled bookings will appear here
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {historyItems.map((b) => (
+                <div
+                  key={b.id + b.role}
+                  className="island-shell flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-full border border-[var(--line)] bg-[var(--sand)] px-2.5 py-0.5 text-xs font-semibold text-[var(--sea-ink-soft)]">
+                      {b.role}
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--sea-ink)]">
+                        {b.listing.title}
+                      </p>
+                      <p className="text-xs text-[var(--sea-ink-soft)]">
+                        {formatDate(b.startDate)} → {formatDate(b.endDate)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-[var(--sea-ink)]">
+                      {formatINR(Number(b.totalPrice))}
+                    </span>
+                    <StatusBadge status={b.status} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Admin Panel Tab ─────────────────────────────────────────────────── */}
+      {activeTab === 'admin' && isAdmin && (
+        <AdminPanel
+          initialListings={initialListings}
+          cats={cats}
+          isSuperAdmin={isSuperAdmin}
+        />
+      )}
     </main>
   )
 }
 
-function ConfirmButton({ bookingId }: { bookingId: string }) {
-  async function confirm() {
-    try {
-      await bookingsApi.updateStatus(bookingId, 'CONFIRMED')
-      window.location.reload()
-    } catch (err) {
-      console.error(err)
-    }
-  }
+// ── VerifyCard ────────────────────────────────────────────────────────────────
 
+function VerifyCard({
+  icon,
+  label,
+  verified,
+  value,
+}: {
+  icon: string
+  label: string
+  verified: boolean
+  value?: string
+}) {
   return (
-    <button
-      onClick={confirm}
-      className="rounded-full bg-[var(--lagoon-deep)] px-3 py-1 text-xs font-semibold text-white transition hover:bg-[var(--lagoon)]"
-    >
-      Confirm
-    </button>
+    <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">
+      <div className="flex items-center gap-1.5">
+        <span className="text-base">{icon}</span>
+        <span className="text-xs font-semibold text-[var(--sea-ink)]">
+          {label}
+        </span>
+        {verified ? (
+          <span className="ml-auto text-[10px] font-bold text-green-600">
+            ✓
+          </span>
+        ) : (
+          <span className="ml-auto text-[10px] text-[var(--sea-ink-soft)]">
+            —
+          </span>
+        )}
+      </div>
+      {value && (
+        <p className="mt-1 truncate text-[11px] text-[var(--sea-ink-soft)]">
+          {value}
+        </p>
+      )}
+    </div>
   )
 }

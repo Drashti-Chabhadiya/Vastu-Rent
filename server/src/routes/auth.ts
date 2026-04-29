@@ -9,6 +9,14 @@ const registerSchema = z.object({
   password: z.string().min(8),
 })
 
+const completeProfileSchema = z.object({
+  // WhatsApp number – must be a valid international format (e.g. +919876543210)
+  phone: z
+    .string()
+    .regex(/^\+[1-9]\d{6,14}$/, 'Enter a valid WhatsApp number with country code (e.g. +919876543210)'),
+  neighborhood: z.string().min(2).max(120),
+})
+
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string(),
@@ -32,7 +40,19 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
     const passwordHash = await bcrypt.hash(password, 12)
     const user = await prisma.user.create({
       data: { name, email, passwordHash },
-      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        avatarUrl: true,
+        phone: true,
+        neighborhood: true,
+        phoneVerified: true,
+        emailVerified: true,
+        governmentIdVerified: true,
+        createdAt: true,
+      },
     })
 
     const token = fastify.jwt.sign({
@@ -77,6 +97,11 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
         email: user.email,
         role: user.role,
         avatarUrl: user.avatarUrl,
+        phone: user.phone,
+        neighborhood: user.neighborhood,
+        phoneVerified: user.phoneVerified,
+        emailVerified: user.emailVerified,
+        governmentIdVerified: user.governmentIdVerified,
       },
     })
   })
@@ -95,6 +120,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
           avatarUrl: true,
           bio: true,
           phone: true,
+          neighborhood: true,
           emailVerified: true,
           phoneVerified: true,
           governmentIdVerified: true,
@@ -103,6 +129,42 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
         },
       })
       if (!user) return reply.code(404).send({ error: 'User not found' })
+      return reply.send(user)
+    },
+  )
+
+  // PATCH /auth/complete-profile  (protected)
+  // Called after registration to set mandatory phone + neighborhood.
+  fastify.patch(
+    '/complete-profile',
+    { preHandler: [fastify.authenticate] },
+    async (request, reply) => {
+      const body = completeProfileSchema.safeParse(request.body)
+      if (!body.success) {
+        return reply.code(400).send({ error: body.error.flatten() })
+      }
+
+      const { phone, neighborhood } = body.data
+
+      const user = await prisma.user.update({
+        where: { id: request.user.sub },
+        data: { phone, neighborhood },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatarUrl: true,
+          bio: true,
+          phone: true,
+          neighborhood: true,
+          emailVerified: true,
+          phoneVerified: true,
+          governmentIdVerified: true,
+          role: true,
+          createdAt: true,
+        },
+      })
+
       return reply.send(user)
     },
   )

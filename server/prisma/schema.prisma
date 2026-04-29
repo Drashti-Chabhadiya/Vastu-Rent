@@ -16,6 +16,7 @@ datasource db {
 enum Role {
   USER
   ADMIN
+  SUPER_ADMIN
 }
 
 enum ListingStatus {
@@ -51,6 +52,7 @@ model User {
   bio                  String?
   phone                String?
   phoneVerified        Boolean  @default(false)
+  neighborhood         String?
   governmentIdVerified Boolean  @default(false)
   governmentIdUrl      String?
   socialLink           String?
@@ -103,6 +105,9 @@ model Listing {
   postalCode  String?
   latitude    Float
   longitude   Float
+
+  // Pricing
+  securityDeposit Decimal? @db.Decimal(10, 2)
 
   // Availability
   minRentalDays Int @default(1)

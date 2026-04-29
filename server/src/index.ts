@@ -14,7 +14,11 @@ import reviewRoutes from './routes/reviews.js'
 import categoryRoutes from './routes/categories.js'
 import userRoutes from './routes/users.js'
 import uploadRoutes from './routes/uploads.js'
+import adminRoutes from './routes/admin.js'
 
+import { setIO } from './lib/socket-io.js'
+
+// ...existing imports above...
 async function bootstrap() {
   const fastify = Fastify({
     logger: {
@@ -47,14 +51,14 @@ async function bootstrap() {
   await fastify.register(categoryRoutes, { prefix: '/api/categories' })
   await fastify.register(userRoutes, { prefix: '/api/users' })
   await fastify.register(uploadRoutes, { prefix: '/api/uploads' })
+  await fastify.register(adminRoutes, { prefix: '/api/admin' })
 
   // ── Health check ───────────────────────────────────────────────────────────
   fastify.get('/health', async () => ({ status: 'ok', ts: Date.now() }))
 
   // ── Attach Socket.io to the underlying http.Server ────────────────────────
-  // fastify.server is already the http.Server — attach Socket.io directly
-  // instead of wrapping it in a second createServer() call.
-  createSocketServer(fastify.server)
+  const io = createSocketServer(fastify.server)
+  setIO(io)
 
   // ── Start ──────────────────────────────────────────────────────────────────
   await fastify.listen({ port: env.PORT, host: env.HOST })

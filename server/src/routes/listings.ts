@@ -6,6 +6,7 @@ const createListingSchema = z.object({
   title: z.string().min(5).max(120),
   description: z.string().min(20),
   pricePerDay: z.number().positive(),
+  securityDeposit: z.number().min(0).optional(),
   categoryId: z.string(),
   images: z.array(z.string().url()).min(1).max(10),
   tags: z.array(z.string()).default([]),
@@ -23,6 +24,7 @@ const createListingSchema = z.object({
 const searchSchema = z.object({
   q: z.string().optional(),
   categoryId: z.string().optional(),
+  city: z.string().optional(),
   lat: z.coerce.number().optional(),
   lng: z.coerce.number().optional(),
   radiusKm: z.coerce.number().positive().default(10),
@@ -46,7 +48,7 @@ const listingRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.code(400).send({ error: query.error.flatten() })
     }
 
-    const { q, categoryId, lat, lng, radiusKm, minPrice, maxPrice, page, limit } =
+    const { q, categoryId, city, lat, lng, radiusKm, minPrice, maxPrice, page, limit } =
       query.data
 
     const skip = (page - 1) * limit
@@ -93,6 +95,11 @@ const listingRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     if (categoryId) where.categoryId = categoryId
+
+    // City filter — case-insensitive partial match
+    if (city) {
+      where.city = { contains: city, mode: 'insensitive' }
+    }
 
     if (minPrice !== undefined || maxPrice !== undefined) {
       where.pricePerDay = {
@@ -149,6 +156,7 @@ const listingRoutes: FastifyPluginAsync = async (fastify) => {
             emailVerified: true,
             phoneVerified: true,
             governmentIdVerified: true,
+            phone: true,
           },
         },
         reviews: {

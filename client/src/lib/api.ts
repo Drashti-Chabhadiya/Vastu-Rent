@@ -46,6 +46,8 @@ export interface AuthUser {
   email: string
   role: string
   avatarUrl?: string
+  phone?: string
+  neighborhood?: string
   phoneVerified?: boolean
   emailVerified?: boolean
   governmentIdVerified?: boolean
@@ -72,15 +74,30 @@ export const auth = {
     }),
 
   me: () => request<AuthUser>('/auth/me'),
+
+  completeProfile: (data: { phone: string; neighborhood: string }) =>
+    request<AuthUser>('/auth/complete-profile', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
 }
 
 // ── Listings ──────────────────────────────────────────────────────────────────
+
+export interface Review {
+  id: string
+  rating: number
+  comment?: string
+  createdAt: string
+  author: { id: string; name: string; avatarUrl?: string }
+}
 
 export interface Listing {
   id: string
   title: string
   description: string
   pricePerDay: number
+  securityDeposit?: number | null
   status: string
   images: string[]
   tags: string[]
@@ -97,11 +114,14 @@ export interface Listing {
     id: string; 
     name: string; 
     avatarUrl?: string;
+    bio?: string;
+    phone?: string;
     phoneVerified?: boolean;
     emailVerified?: boolean;
     governmentIdVerified?: boolean;
   }
   category: { id: string; name: string; slug: string; icon?: string }
+  reviews?: Review[]
   _count?: { reviews: number; bookings?: number }
 }
 
@@ -113,6 +133,7 @@ export interface ListingsResponse {
 export interface ListingSearchParams {
   q?: string
   categoryId?: string
+  city?: string
   lat?: number
   lng?: number
   radiusKm?: number
@@ -120,6 +141,25 @@ export interface ListingSearchParams {
   maxPrice?: number
   page?: number
   limit?: number
+}
+
+export interface CreateListingInput {
+  title: string
+  description: string
+  pricePerDay: number
+  securityDeposit?: number
+  categoryId: string
+  images: string[]
+  tags?: string[]
+  address: string
+  city: string
+  state?: string
+  country: string
+  postalCode?: string
+  latitude: number
+  longitude: number
+  minRentalDays?: number
+  maxRentalDays?: number
 }
 
 export const listings = {
@@ -145,7 +185,7 @@ export const listings = {
     )
   },
 
-  create: (data: Partial<Listing> & { categoryId: string }) =>
+  create: (data: CreateListingInput) =>
     request<Listing>('/listings', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -171,8 +211,10 @@ export interface Booking {
   totalPrice: number
   notes?: string
   createdAt: string
-  listing: Pick<Listing, 'id' | 'title' | 'images' | 'city' | 'pricePerDay'>
-  renter?: { id: string; name: string; avatarUrl?: string }
+  listing: Pick<Listing, 'id' | 'title' | 'images' | 'city' | 'pricePerDay'> & {
+    securityDeposit?: number | null
+  }
+  renter?: { id: string; name: string; avatarUrl?: string; phone?: string; email?: string }
 }
 
 export const bookings = {
@@ -305,4 +347,94 @@ export const users = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+}
+
+// ── Admin ─────────────────────────────────────────────────────────────────────
+
+export interface AdminListing extends Omit<Listing, 'owner'> {
+  owner?: { id: string; name: string; email: string; role: string }
+  _count: { bookings: number; reviews: number }
+}
+
+export interface AdminUser {
+  id: string
+  name: string
+  email: string
+  role: string
+  phone?: string
+  neighborhood?: string
+  emailVerified: boolean
+  phoneVerified: boolean
+  governmentIdVerified: boolean
+  createdAt: string
+  _count: { listings: number; bookingsAsRenter: number }
+}
+
+export interface PlatformStats {
+  totalUsers: number
+  totalAdmins: number
+  totalListings: number
+  pendingListings: number
+  totalBookings: number
+}
+
+export const admin = {
+  // ADMIN: get own listings
+  myListings: () => request<AdminListing[]>('/admin/my-listings'),
+
+  // ADMIN: create a listing (starts as DRAFT, needs SUPER_ADMIN approval)
+  createListing: (data: CreateListingInput) =>
+    request<Listing>('/admin/listings', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // ADMIN: toggle listing status (ACTIVE / PAUSED)
+  toggleStatus: (id: string, status: 'ACTIVE' | 'PAUSED') =>
+    request<Listing>(`/admin/listings/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+
+  // ADMIN: update own listing
+  updateListing: (id: string, data: Partial<CreateListingInput>) =>
+    request<Listing>(`/admin/listings/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  // ADMIN: delete own listing
+  deleteListing: (id: string) =>
+    request<void>(`/admin/listings/${id}`, { method: 'DELETE' }),
+
+  // SUPER_ADMIN: platform overview stats
+  platformStats: () => request<PlatformStats>('/admin/platform-stats'),
+
+  // SUPER_ADMIN: all listings (including DRAFT pending approval)
+  allListings: () => request<AdminListing[]>('/admin/all-listings'),
+
+  // SUPER_ADMIN: all bookings log
+  allBookings: () => request<Booking[]>('/admin/all-bookings'),
+
+  // SUPER_ADMIN: approve a DRAFT listing → ACTIVE
+  approveListing: (id: string) =>
+    request<Listing>(`/admin/approve-listing/${id}`, { method: 'PATCH' }),
+
+  // SUPER_ADMIN: reject a DRAFT listing → DELETED
+  rejectListing: (id: string) =>
+    request<Listing>(`/admin/reject-listing/${id}`, { method: 'PATCH' }),
+
+  // SUPER_ADMIN: force delete any listing
+  forceDelete: (id: string) =>
+    request<void>(`/admin/force-delete/${id}`, { method: 'DELETE' }),
+
+  // SUPER_ADMIN: promote user to ADMIN
+  verifyAdmin: (userId: string) =>
+    request<{ id: string; name: string; email: string; role: string }>(
+      `/admin/verify-admin/${userId}`,
+      { method: 'PATCH' },
+    ),
+
+  // SUPER_ADMIN: all users
+  allUsers: () => request<AdminUser[]>('/admin/all-users'),
 }

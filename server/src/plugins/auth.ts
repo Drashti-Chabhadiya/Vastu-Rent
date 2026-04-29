@@ -10,6 +10,13 @@ declare module '@fastify/jwt' {
   }
 }
 
+// Role hierarchy: SUPER_ADMIN > ADMIN > USER
+const ROLE_RANK: Record<string, number> = {
+  USER: 1,
+  ADMIN: 2,
+  SUPER_ADMIN: 3,
+}
+
 const authPlugin: FastifyPluginAsync = async (fastify) => {
   fastify.register(fastifyJwt, {
     secret: env.JWT_SECRET,
@@ -39,6 +46,26 @@ const authPlugin: FastifyPluginAsync = async (fastify) => {
       }
     },
   )
+
+  // Decorator factory: requireRole(minRole)
+  // Returns a preHandler that enforces a minimum role level.
+  // Usage: { preHandler: [fastify.requireRole('ADMIN')] }
+  fastify.decorate(
+    'requireRole',
+    (minRole: string) =>
+      async (request: FastifyRequest, reply: FastifyReply) => {
+        try {
+          await request.jwtVerify()
+        } catch {
+          return reply.code(401).send({ error: 'Unauthorized' })
+        }
+        const userRank = ROLE_RANK[request.user.role] ?? 0
+        const requiredRank = ROLE_RANK[minRole] ?? 99
+        if (userRank < requiredRank) {
+          return reply.code(403).send({ error: 'Forbidden: insufficient role' })
+        }
+      },
+  )
 }
 
 export default fp(authPlugin, { name: 'auth' })
@@ -53,5 +80,8 @@ declare module 'fastify' {
       request: FastifyRequest,
       reply: FastifyReply,
     ) => Promise<void>
+    requireRole: (
+      minRole: string,
+    ) => (request: FastifyRequest, reply: FastifyReply) => Promise<void>
   }
 }

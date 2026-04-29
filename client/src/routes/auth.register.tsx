@@ -22,7 +22,7 @@ function RegisterPage() {
     try {
       const res = await auth.register({ name, email, password })
       authStore.setAuth(res.token, res.user)
-      navigate({ to: '/dashboard' })
+      navigate({ to: '/auth/complete-profile' })
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Registration failed')
     } finally {
@@ -33,7 +33,7 @@ function RegisterPage() {
   return (
     <main className="page-wrap flex min-h-[70vh] items-center justify-center px-4 py-12">
       <div className="island-shell w-full max-w-md rounded-2xl p-8">
-        <p className="island-kicker mb-2">Join PeerRent</p>
+        <p className="island-kicker mb-2">Join Vastu-Rent</p>
         <h1 className="display-title mb-6 text-3xl font-bold text-[var(--sea-ink)]">
           Create an account
         </h1>

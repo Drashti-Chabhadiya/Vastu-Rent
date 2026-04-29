@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { listings, bookings, messages as messagesApi } from '../lib/api'
 import { useAuth } from '../hooks/useAuth'
+import { useSocket } from '../hooks/useSocket'
 
 export const Route = createFileRoute('/listings/$id')({
   loader: ({ params }) => listings.get(params.id),
@@ -12,6 +13,7 @@ function ListingDetailPage() {
   const listing = Route.useLoaderData()
   const { user, isAuthenticated } = useAuth()
   const navigate = useNavigate()
+  const socket = useSocket()
 
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -22,7 +24,25 @@ function ListingDetailPage() {
   const [activeImage, setActiveImage] = useState(0)
   const [startingChat, setStartingChat] = useState(false)
 
+  // Toast notification state (for real-time booking notifications)
+  const [toast, setToast] = useState<{ title: string; body: string } | null>(null)
+
   const isOwner = user?.id === listing.owner.id
+  const isAdminRole = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
+  // Only USER role can book; owners and admins cannot rent items
+  const canBook = isAuthenticated && !isOwner && !isAdminRole
+
+  // ── Real-time notification toast ──────────────────────────────────────────
+  useEffect(() => {
+    if (!socket) return
+    function onNotification(n: { title: string; body: string }) {
+      setToast(n)
+      const t = setTimeout(() => setToast(null), 6000)
+      return () => clearTimeout(t)
+    }
+    socket.on('notification:new', onNotification)
+    return () => { socket.off('notification:new', onNotification) }
+  }, [socket])
 
   const days =
     startDate && endDate
@@ -89,8 +109,36 @@ function ListingDetailPage() {
         ).toFixed(1)
       : null
 
+  // ── WhatsApp deep-link ────────────────────────────────────────────────────
+  // Uses the owner's phone if available, otherwise opens wa.me without a number
+  // so the user can paste it manually.
+  const waMessage = encodeURIComponent(
+    `Hi, I am interested in renting your *${listing.title}* listed on Vastu-Rent. Is it available?`,
+  )
+  const waPhone = listing.owner.phone?.replace(/\D/g, '') ?? ''
+  const waUrl = waPhone
+    ? `https://wa.me/${waPhone}?text=${waMessage}`
+    : `https://wa.me/?text=${waMessage}`
+
   return (
     <main className="page-wrap px-4 pb-16 pt-8">
+      {/* ── Real-time toast ──────────────────────────────────────────────── */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 flex max-w-sm items-start gap-3 rounded-2xl border border-[var(--lagoon)] bg-[var(--surface-strong)] p-4 shadow-[0_8px_32px_rgba(30,90,72,0.18)] backdrop-blur-md">
+          <span className="mt-0.5 text-xl">🔔</span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-[var(--sea-ink)]">{toast.title}</p>
+            <p className="mt-0.5 text-xs text-[var(--sea-ink-soft)]">{toast.body}</p>
+          </div>
+          <button
+            onClick={() => setToast(null)}
+            className="text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]"
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
         {/* ── Left column ─────────────────────────────────────────────────── */}
         <div>
@@ -253,15 +301,23 @@ function ListingDetailPage() {
         <div className="lg:sticky lg:top-24 lg:self-start">
           <div className="island-shell rounded-2xl p-6">
             <p className="mb-1 text-2xl font-bold text-[var(--lagoon-deep)]">
-              ${Number(listing.pricePerDay).toFixed(2)}
+              ₹{Number(listing.pricePerDay).toFixed(2)}
               <span className="text-base font-normal text-[var(--sea-ink-soft)]">
                 {' '}
                 / day
               </span>
             </p>
-            <p className="mb-4 text-xs text-[var(--sea-ink-soft)]">
+            <p className="mb-1 text-xs text-[var(--sea-ink-soft)]">
               {listing.minRentalDays}–{listing.maxRentalDays} day rental
             </p>
+            {listing.securityDeposit && Number(listing.securityDeposit) > 0 && (
+              <p className="mb-4 flex items-center gap-1 text-xs text-[var(--sea-ink-soft)]">
+                <span>🔒</span>
+                <span>
+                  ₹{Number(listing.securityDeposit).toLocaleString('en-IN')} refundable deposit
+                </span>
+              </p>
+            )}
 
             {isOwner ? (
               <div className="rounded-xl bg-[var(--sand)] p-4 text-center text-sm text-[var(--sea-ink-soft)]">
@@ -273,18 +329,40 @@ function ListingDetailPage() {
                   Manage it →
                 </Link>
               </div>
+            ) : isAdminRole ? (
+              <div className="rounded-xl bg-[var(--sand)] p-4 text-center text-sm text-[var(--sea-ink-soft)]">
+                <p className="mb-1 text-base">🏪</p>
+                <p className="font-semibold text-[var(--sea-ink)]">Admin accounts can't book items</p>
+                <p className="mt-1 text-xs">
+                  Admin/Super Admin roles are for listing products, not renting them.
+                </p>
+              </div>
             ) : success ? (
-              <div className="rounded-xl bg-[rgba(79,184,178,0.12)] p-4 text-center">
-                <p className="text-2xl">🎉</p>
-                <p className="font-semibold text-[var(--sea-ink)]">
-                  Booking request sent!
-                </p>
-                <p className="text-sm text-[var(--sea-ink-soft)]">
-                  The owner will confirm shortly.
-                </p>
+              <div className="space-y-3">
+                <div className="rounded-xl bg-[rgba(79,184,178,0.12)] p-4 text-center">
+                  <p className="text-2xl">🎉</p>
+                  <p className="font-semibold text-[var(--sea-ink)]">
+                    Booking request sent!
+                  </p>
+                  <p className="text-sm text-[var(--sea-ink-soft)]">
+                    The owner will confirm shortly.
+                  </p>
+                </div>
+
+                {/* WhatsApp CTA */}
+                <a
+                  href={waUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-center gap-2 rounded-full bg-[#25D366] px-5 py-3 text-sm font-semibold text-white no-underline transition hover:-translate-y-0.5 hover:bg-[#20BA5A]"
+                >
+                  <span className="text-lg">💬</span>
+                  Chat on WhatsApp
+                </a>
+
                 <Link
                   to="/dashboard"
-                  className="mt-3 inline-block text-sm font-semibold text-[var(--lagoon-deep)]"
+                  className="block text-center text-sm font-semibold text-[var(--lagoon-deep)] hover:underline"
                 >
                   View my bookings →
                 </Link>
@@ -331,16 +409,22 @@ function ListingDetailPage() {
                 </div>
 
                 {days > 0 && (
-                  <div className="rounded-xl bg-[var(--sand)] p-3 text-sm">
+                  <div className="rounded-xl bg-[var(--sand)] p-3 text-sm space-y-1">
                     <div className="flex justify-between">
                       <span className="text-[var(--sea-ink-soft)]">
-                        ${Number(listing.pricePerDay).toFixed(2)} × {days} day
+                        ₹{Number(listing.pricePerDay).toFixed(2)} × {days} day
                         {days !== 1 ? 's' : ''}
                       </span>
                       <span className="font-bold text-[var(--sea-ink)]">
-                        ${totalPrice.toFixed(2)}
+                        ₹{totalPrice.toFixed(2)}
                       </span>
                     </div>
+                    {listing.securityDeposit && Number(listing.securityDeposit) > 0 && (
+                      <div className="flex justify-between text-xs text-[var(--sea-ink-soft)]">
+                        <span>🔒 Security deposit (refundable)</span>
+                        <span>₹{Number(listing.securityDeposit).toLocaleString('en-IN')}</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -358,10 +442,30 @@ function ListingDetailPage() {
                   {booking
                     ? 'Sending request…'
                     : isAuthenticated
-                      ? 'Request to book'
-                      : 'Sign in to book'}
+                      ? 'Request to Book'
+                      : 'Sign in to Book'}
                 </button>
               </form>
+            )}
+
+            {/* WhatsApp button — shown for non-owners who can book */}
+            {canBook && !success && (
+              <div className="mt-3">
+                <a
+                  href={waUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-center gap-2 rounded-full border-2 border-[#25D366] px-5 py-2.5 text-sm font-semibold text-[#25D366] no-underline transition hover:-translate-y-0.5 hover:bg-[#25D366] hover:text-white"
+                >
+                  <span className="text-base">💬</span>
+                  Ask on WhatsApp
+                </a>
+                {!waPhone && (
+                  <p className="mt-1.5 text-center text-[10px] text-[var(--sea-ink-soft)]">
+                    Owner hasn't added a WhatsApp number yet
+                  </p>
+                )}
+              </div>
             )}
           </div>
         </div>

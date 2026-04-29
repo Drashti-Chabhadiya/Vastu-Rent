@@ -21,7 +21,12 @@ function LoginPage() {
     try {
       const res = await auth.login({ email, password })
       authStore.setAuth(res.token, res.user)
-      navigate({ to: '/dashboard' })
+      // If the user hasn't completed their profile yet, send them there first
+      if (!res.user.phone || !res.user.neighborhood) {
+        navigate({ to: '/auth/complete-profile' })
+      } else {
+        navigate({ to: '/dashboard' })
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed')
     } finally {

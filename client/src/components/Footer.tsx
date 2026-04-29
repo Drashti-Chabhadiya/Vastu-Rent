@@ -7,7 +7,7 @@ export default function Footer() {
     <footer className="site-footer mt-20 px-4 pb-14 pt-10 text-[var(--sea-ink-soft)]">
       <div className="page-wrap grid gap-8 sm:grid-cols-3">
         <div>
-          <p className="island-kicker mb-3">PeerRent</p>
+          <p className="island-kicker mb-3">Vastu-Rent</p>
           <p className="m-0 text-sm leading-relaxed">
             Rent anything from your neighbours. Hyper-local, peer-to-peer, and
             community-first.
@@ -58,7 +58,7 @@ export default function Footer() {
       </div>
 
       <div className="page-wrap mt-10 border-t border-[var(--line)] pt-6 text-center text-xs">
-        &copy; {year} PeerRent. All rights reserved.
+        &copy; {year} Vastu-Rent. All rights reserved.
       </div>
     </footer>
   )
