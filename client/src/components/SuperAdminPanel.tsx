@@ -175,7 +175,7 @@ export default function SuperAdminPanel() {
               'flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ' +
               (tab === t.id
                 ? 'bg-purple-600 text-white shadow-sm'
-                : 'border border-[var(--line)] bg-[var(--surface-strong)] text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]')
+                : 'border border-[var(--line)] bg-[var(--surface-strong)] text-[var(--text-soft)] hover:text-[var(--text-dark)]')
             }
           >
             {t.label}
@@ -189,7 +189,7 @@ export default function SuperAdminPanel() {
       </div>
 
       {loading && (
-        <div className="py-16 text-center text-[var(--sea-ink-soft)]">
+        <div className="py-16 text-center text-[var(--text-soft)]">
           <p className="text-3xl">⏳</p>
           <p className="mt-2 text-sm">Loading platform data…</p>
         </div>
@@ -210,7 +210,7 @@ export default function SuperAdminPanel() {
               <div key={s.label} className="island-shell rounded-2xl p-5">
                 <p className="mb-1 text-2xl">{s.icon}</p>
                 <p className={'text-2xl font-bold ' + s.color}>{s.value}</p>
-                <p className="text-xs text-[var(--sea-ink-soft)]">{s.label}</p>
+                <p className="text-xs text-[var(--text-soft)]">{s.label}</p>
               </div>
             ))}
           </div>
@@ -236,19 +236,19 @@ export default function SuperAdminPanel() {
           {/* Recent bookings summary */}
           <div className="island-shell rounded-2xl overflow-hidden">
             <div className="border-b border-[var(--line)] px-5 py-4">
-              <h3 className="font-semibold text-[var(--sea-ink)]">Recent Bookings</h3>
+              <h3 className="font-semibold text-[var(--text-dark)]">Recent Bookings</h3>
             </div>
             <div className="divide-y divide-[var(--line)]">
               {allBookings.slice(0, 5).map((b) => (
                 <div key={b.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
                   <div>
-                    <p className="text-sm font-semibold text-[var(--sea-ink)]">{b.listing.title}</p>
-                    <p className="text-xs text-[var(--sea-ink-soft)]">
+                    <p className="text-sm font-semibold text-[var(--text-dark)]">{b.listing.title}</p>
+                    <p className="text-xs text-[var(--text-soft)]">
                       👤 {b.renter?.name ?? '—'} · {formatDate(b.startDate)} → {formatDate(b.endDate)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-[var(--sea-ink)]">{formatINR(Number(b.totalPrice))}</span>
+                    <span className="font-bold text-[var(--text-dark)]">{formatINR(Number(b.totalPrice))}</span>
                     <span className={'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ' + (BOOKING_STATUS_CLS[b.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
                       {b.status.charAt(0) + b.status.slice(1).toLowerCase()}
                     </span>
@@ -256,7 +256,7 @@ export default function SuperAdminPanel() {
                 </div>
               ))}
               {allBookings.length === 0 && (
-                <p className="px-5 py-8 text-center text-sm text-[var(--sea-ink-soft)]">No bookings yet</p>
+                <p className="px-5 py-8 text-center text-sm text-[var(--text-soft)]">No bookings yet</p>
               )}
             </div>
           </div>
@@ -267,10 +267,10 @@ export default function SuperAdminPanel() {
       {!loading && tab === 'approvals' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-[var(--sea-ink)]">
+            <h3 className="font-semibold text-[var(--text-dark)]">
               Pending Approval ({pendingListings.length})
             </h3>
-            <p className="text-xs text-[var(--sea-ink-soft)]">
+            <p className="text-xs text-[var(--text-soft)]">
               Approve to make live · Reject to remove
             </p>
           </div>
@@ -278,8 +278,8 @@ export default function SuperAdminPanel() {
           {pendingListings.length === 0 ? (
             <div className="island-shell rounded-2xl p-10 text-center">
               <p className="mb-2 text-4xl">✅</p>
-              <p className="font-semibold text-[var(--sea-ink)]">All caught up!</p>
-              <p className="text-sm text-[var(--sea-ink-soft)]">No listings waiting for approval</p>
+              <p className="font-semibold text-[var(--text-dark)]">All caught up!</p>
+              <p className="text-sm text-[var(--text-soft)]">No listings waiting for approval</p>
             </div>
           ) : (
             pendingListings.map((listing) => (
@@ -295,11 +295,11 @@ export default function SuperAdminPanel() {
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
-                        <p className="font-semibold text-[var(--sea-ink)]">{listing.title}</p>
-                        <p className="text-xs text-[var(--sea-ink-soft)]">
+                        <p className="font-semibold text-[var(--text-dark)]">{listing.title}</p>
+                        <p className="text-xs text-[var(--text-soft)]">
                           {listing.category.icon} {listing.category.name} · 📍 {listing.city}
                         </p>
-                        <p className="text-xs text-[var(--sea-ink-soft)]">
+                        <p className="text-xs text-[var(--text-soft)]">
                           Owner: {listing.owner?.name ?? '—'} ({listing.owner?.email ?? '—'})
                         </p>
                       </div>
@@ -307,11 +307,11 @@ export default function SuperAdminPanel() {
                         Pending Review
                       </span>
                     </div>
-                    <p className="mt-2 line-clamp-2 text-xs text-[var(--sea-ink-soft)]">
+                    <p className="mt-2 line-clamp-2 text-xs text-[var(--text-soft)]">
                       {listing.description}
                     </p>
-                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[var(--sea-ink-soft)]">
-                      <span className="font-semibold text-[var(--sea-ink)]">
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[var(--text-soft)]">
+                      <span className="font-semibold text-[var(--text-dark)]">
                         ₹{Number(listing.pricePerDay).toLocaleString('en-IN')}/day
                       </span>
                       {listing.securityDeposit && Number(listing.securityDeposit) > 0 && (
@@ -345,7 +345,7 @@ export default function SuperAdminPanel() {
           {activeListings.length > 0 && (
             <div className="island-shell rounded-2xl overflow-hidden">
               <div className="border-b border-[var(--line)] px-5 py-4">
-                <h3 className="font-semibold text-[var(--sea-ink)]">
+                <h3 className="font-semibold text-[var(--text-dark)]">
                   All Live Listings ({activeListings.length})
                 </h3>
               </div>
@@ -360,8 +360,8 @@ export default function SuperAdminPanel() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="truncate text-sm font-semibold text-[var(--sea-ink)]">{listing.title}</p>
-                      <p className="text-xs text-[var(--sea-ink-soft)]">
+                      <p className="truncate text-sm font-semibold text-[var(--text-dark)]">{listing.title}</p>
+                      <p className="text-xs text-[var(--text-soft)]">
                         {listing.owner?.name ?? '—'} · ₹{Number(listing.pricePerDay).toLocaleString('en-IN')}/day · {listing.city}
                       </p>
                     </div>
@@ -384,12 +384,12 @@ export default function SuperAdminPanel() {
       {!loading && tab === 'bookings' && (
         <div className="island-shell rounded-2xl overflow-hidden">
           <div className="border-b border-[var(--line)] px-5 py-4">
-            <h3 className="font-semibold text-[var(--sea-ink)]">
+            <h3 className="font-semibold text-[var(--text-dark)]">
               All Booking Requests ({allBookings.length})
             </h3>
           </div>
           {allBookings.length === 0 ? (
-            <p className="px-5 py-10 text-center text-sm text-[var(--sea-ink-soft)]">No bookings yet</p>
+            <p className="px-5 py-10 text-center text-sm text-[var(--text-soft)]">No bookings yet</p>
           ) : (
             <div className="divide-y divide-[var(--line)]">
               {allBookings.map((b) => (
@@ -402,18 +402,18 @@ export default function SuperAdminPanel() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-semibold text-[var(--sea-ink)]">
+                    <p className="truncate text-sm font-semibold text-[var(--text-dark)]">
                       {b.listing.title}
                     </p>
-                    <p className="text-xs text-[var(--sea-ink-soft)]">
+                    <p className="text-xs text-[var(--text-soft)]">
                       👤 {b.renter?.name ?? '—'} ({b.renter?.email ?? '—'})
                     </p>
-                    <p className="text-xs text-[var(--sea-ink-soft)]">
+                    <p className="text-xs text-[var(--text-soft)]">
                       📅 {formatDate(b.startDate)} → {formatDate(b.endDate)}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <span className="font-bold text-[var(--sea-ink)]">
+                    <span className="font-bold text-[var(--text-dark)]">
                       {formatINR(Number(b.totalPrice))}
                     </span>
                     <span className={'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ' + (BOOKING_STATUS_CLS[b.status] ?? 'bg-gray-100 text-gray-600 border-gray-200')}>
@@ -431,22 +431,22 @@ export default function SuperAdminPanel() {
       {!loading && tab === 'users' && (
         <div className="island-shell rounded-2xl overflow-hidden">
           <div className="border-b border-[var(--line)] px-5 py-4">
-            <h3 className="font-semibold text-[var(--sea-ink)]">
+            <h3 className="font-semibold text-[var(--text-dark)]">
               All Users ({allUsers.length})
             </h3>
           </div>
           {allUsers.length === 0 ? (
-            <p className="px-5 py-10 text-center text-sm text-[var(--sea-ink-soft)]">No users yet</p>
+            <p className="px-5 py-10 text-center text-sm text-[var(--text-soft)]">No users yet</p>
           ) : (
             <div className="divide-y divide-[var(--line)]">
               {allUsers.map((u) => (
                 <div key={u.id} className="flex flex-wrap items-center gap-4 px-5 py-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--lagoon-deep)] text-sm font-bold text-white">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--brand)] text-sm font-bold text-white">
                     {u.name[0]}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-[var(--sea-ink)]">{u.name}</p>
+                      <p className="text-sm font-semibold text-[var(--text-dark)]">{u.name}</p>
                       <span className={
                         'rounded-full px-2 py-0.5 text-[10px] font-bold ' +
                         (u.role === 'SUPER_ADMIN'
@@ -458,8 +458,8 @@ export default function SuperAdminPanel() {
                         {u.role}
                       </span>
                     </div>
-                    <p className="text-xs text-[var(--sea-ink-soft)]">{u.email}</p>
-                    <p className="text-xs text-[var(--sea-ink-soft)]">
+                    <p className="text-xs text-[var(--text-soft)]">{u.email}</p>
+                    <p className="text-xs text-[var(--text-soft)]">
                       �� {u._count.listings} listings · 🛒 {u._count.bookingsAsRenter} bookings · Joined {formatDate(u.createdAt)}
                     </p>
                   </div>

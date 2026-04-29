@@ -1,81 +1,80 @@
 import { useEffect, useState } from 'react'
+import { Sun, Moon, Monitor } from 'lucide-react'
 
 type ThemeMode = 'light' | 'dark' | 'auto'
 
-function getInitialMode(): ThemeMode {
-  if (typeof window === 'undefined') {
-    return 'auto'
-  }
-
-  const stored = window.localStorage.getItem('theme')
-  if (stored === 'light' || stored === 'dark' || stored === 'auto') {
-    return stored
-  }
-
-  return 'auto'
-}
-
-function applyThemeMode(mode: ThemeMode) {
+function applyTheme(mode: ThemeMode) {
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-  const resolved = mode === 'auto' ? (prefersDark ? 'dark' : 'light') : mode
+  const resolved    = mode === 'auto' ? (prefersDark ? 'dark' : 'light') : mode
 
   document.documentElement.classList.remove('light', 'dark')
   document.documentElement.classList.add(resolved)
+  document.documentElement.style.colorScheme = resolved
 
   if (mode === 'auto') {
     document.documentElement.removeAttribute('data-theme')
   } else {
     document.documentElement.setAttribute('data-theme', mode)
   }
+}
 
-  document.documentElement.style.colorScheme = resolved
+const MODES: ThemeMode[] = ['light', 'dark', 'auto']
+
+const ICONS: Record<ThemeMode, React.ReactNode> = {
+  light: <Sun  className="h-3.5 w-3.5" />,
+  dark:  <Moon className="h-3.5 w-3.5" />,
+  auto:  <Monitor className="h-3.5 w-3.5" />,
+}
+
+const LABELS: Record<ThemeMode, string> = {
+  light: 'Light',
+  dark:  'Dark',
+  auto:  'Auto',
 }
 
 export default function ThemeToggle() {
   const [mode, setMode] = useState<ThemeMode>('auto')
 
+  // Read saved preference on mount
   useEffect(() => {
-    const initialMode = getInitialMode()
-    setMode(initialMode)
-    applyThemeMode(initialMode)
+    const saved = window.localStorage.getItem('theme') as ThemeMode | null
+    const initial: ThemeMode =
+      saved === 'light' || saved === 'dark' || saved === 'auto' ? saved : 'auto'
+    setMode(initial)
+    applyTheme(initial)
   }, [])
 
+  // Re-apply when system preference changes (only relevant in 'auto' mode)
   useEffect(() => {
-    if (mode !== 'auto') {
-      return
-    }
-
-    const media = window.matchMedia('(prefers-color-scheme: dark)')
-    const onChange = () => applyThemeMode('auto')
-
+    if (mode !== 'auto') return
+    const media    = window.matchMedia('(prefers-color-scheme: dark)')
+    const onChange = () => applyTheme('auto')
     media.addEventListener('change', onChange)
-    return () => {
-      media.removeEventListener('change', onChange)
-    }
+    return () => media.removeEventListener('change', onChange)
   }, [mode])
 
-  function toggleMode() {
-    const nextMode: ThemeMode =
-      mode === 'light' ? 'dark' : mode === 'dark' ? 'auto' : 'light'
-    setMode(nextMode)
-    applyThemeMode(nextMode)
-    window.localStorage.setItem('theme', nextMode)
+  function cycle() {
+    const next = MODES[(MODES.indexOf(mode) + 1) % MODES.length]
+    setMode(next)
+    applyTheme(next)
+    window.localStorage.setItem('theme', next)
   }
-
-  const label =
-    mode === 'auto'
-      ? 'Theme mode: auto (system). Click to switch to light mode.'
-      : `Theme mode: ${mode}. Click to switch mode.`
 
   return (
     <button
       type="button"
-      onClick={toggleMode}
-      aria-label={label}
-      title={label}
-      className="rounded-full border border-[var(--chip-line)] bg-[var(--chip-bg)] px-3 py-1.5 text-sm font-semibold text-[var(--sea-ink)] shadow-[0_8px_22px_rgba(30,90,72,0.08)] transition hover:-translate-y-0.5"
+      onClick={cycle}
+      aria-label={`Theme: ${LABELS[mode]}. Click to cycle.`}
+      title={`Theme: ${LABELS[mode]}`}
+      className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition hover:-translate-y-0.5"
+      style={{
+        borderColor: 'var(--chip-line)',
+        background:  'var(--chip-bg)',
+        color:       'var(--text-dark)',
+      }}
     >
-      {mode === 'auto' ? 'Auto' : mode === 'dark' ? 'Dark' : 'Light'}
+      {ICONS[mode]}
+      <span>{LABELS[mode]}</span>
     </button>
   )
 }

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
-import { bookings as bookingsApi, type Booking, admin, categories, type AdminListing, type Category } from '../lib/api'
+import { bookings as bookingsApi, type Booking, admin, auth, categories, type AdminListing, type Category } from '../lib/api'
 import { useAuth } from '../hooks/useAuth'
 import AdminPanel from '../components/AdminPanel'
 
@@ -23,7 +23,7 @@ const STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   CONFIRMED: 'bg-blue-100 text-blue-800 border-blue-200',
   ACTIVE: 'bg-green-100 text-green-800 border-green-200',
-  COMPLETED: 'bg-[var(--sand)] text-[var(--sea-ink-soft)] border-[var(--line)]',
+  COMPLETED: 'bg-[var(--sand)] text-[var(--text-soft)] border-[var(--line)]',
   CANCELLED: 'bg-red-100 text-red-700 border-red-200',
   DISPUTED: 'bg-orange-100 text-orange-800 border-orange-200',
 }
@@ -102,7 +102,7 @@ function formatINR(amount: number): string {
 
 function DashboardPage() {
   const { mine, ownerBookings: ownerData, myListings: initialListings, cats } = Route.useLoaderData()
-  const { user, isAuthenticated, clearAuth } = useAuth()
+  const { user, isAuthenticated, initializing, clearAuth } = useAuth()
   const navigate = useNavigate()
 
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
@@ -111,6 +111,20 @@ function DashboardPage() {
   const [activeTab, setActiveTab] = useState<'renter' | 'provider' | 'history' | 'admin'>('renter')
   const [bookingsList, setBookingsList] = useState<Booking[]>(mine)
   const [ownerList, setOwnerList] = useState<Booking[]>(ownerData)
+
+  // Wait for silent refresh to complete before deciding to redirect.
+  // Without this guard, the page redirects to /auth/login on every refresh
+  // because the access token hasn't been restored from the cookie yet.
+  if (initializing) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--brand)] border-t-transparent" />
+          <p className="text-sm" style={{ color: 'var(--text-soft)' }}>Restoring session…</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!isAuthenticated) {
     navigate({ to: '/auth/login' })
@@ -167,7 +181,7 @@ function DashboardPage() {
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="island-kicker mb-1">Dashboard</p>
-          <h1 className="display-title text-3xl font-bold text-[var(--sea-ink)]">
+          <h1 className="display-title text-3xl font-bold text-[var(--text-dark)]">
             Welcome back, {user?.name?.split(' ')[0]}
             {isSuperAdmin && (
               <span className="ml-2 rounded-full bg-purple-600 px-2.5 py-0.5 text-sm font-semibold text-white">
@@ -175,28 +189,29 @@ function DashboardPage() {
               </span>
             )}
             {user?.role === 'ADMIN' && !isSuperAdmin && (
-              <span className="ml-2 rounded-full bg-[var(--lagoon-deep)] px-2.5 py-0.5 text-sm font-semibold text-white">
+              <span className="ml-2 rounded-full bg-[var(--brand)] px-2.5 py-0.5 text-sm font-semibold text-white">
                 Admin
               </span>
             )}
           </h1>
-          <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
+          <p className="mt-1 text-sm text-[var(--text-soft)]">
             Manage your rentals and listings
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Link
             to="/listings/new"
-            className="rounded-full bg-[var(--lagoon-deep)] px-5 py-2.5 text-sm font-semibold text-white no-underline transition hover:-translate-y-0.5 hover:bg-[var(--lagoon)]"
+            className="rounded-full bg-[var(--brand)] px-5 py-2.5 text-sm font-semibold text-white no-underline transition hover:-translate-y-0.5 hover:bg-[var(--brand-light)]"
           >
             + List an Item
           </Link>
           <button
-            onClick={() => {
+            onClick={async () => {
+              try { await auth.logout() } catch { /* ignore */ }
               clearAuth()
               navigate({ to: '/', search: { accessDenied: undefined } })
             }}
-            className="rounded-full border border-[var(--line)] bg-[var(--surface)] px-5 py-2.5 text-sm font-semibold text-[var(--sea-ink-soft)] transition hover:border-red-300 hover:text-red-600"
+            className="rounded-full border border-[var(--line)] bg-[var(--surface)] px-5 py-2.5 text-sm font-semibold text-[var(--text-soft)] transition hover:border-red-300 hover:text-red-600"
           >
             Sign out
           </button>
@@ -220,10 +235,10 @@ function DashboardPage() {
             className="island-shell rounded-2xl p-5"
           >
             <p className="mb-1 text-2xl">{stat.icon}</p>
-            <p className="text-xl font-bold text-[var(--sea-ink)]">
+            <p className="text-xl font-bold text-[var(--text-dark)]">
               {stat.value}
             </p>
-            <p className="text-xs text-[var(--sea-ink-soft)]">{stat.label}</p>
+            <p className="text-xs text-[var(--text-soft)]">{stat.label}</p>
           </div>
         ))}
       </div>
@@ -277,8 +292,8 @@ function DashboardPage() {
               (activeTab === tab.id
                 ? tab.id === 'admin'
                   ? 'bg-purple-600 text-white shadow-sm'
-                  : 'bg-[var(--lagoon-deep)] text-white shadow-sm'
-                : 'text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]')
+                  : 'bg-[var(--brand)] text-white shadow-sm'
+                : 'text-[var(--text-soft)] hover:text-[var(--text-dark)]')
             }
           >
             {tab.label}
@@ -288,7 +303,7 @@ function DashboardPage() {
                   'rounded-full px-1.5 py-0.5 text-[10px] font-bold ' +
                   (activeTab === tab.id
                     ? 'bg-white/20 text-white'
-                    : 'bg-[var(--lagoon-deep)] text-white')
+                    : 'bg-[var(--brand)] text-white')
                 }
               >
                 {tab.count}
@@ -304,7 +319,7 @@ function DashboardPage() {
           {/* Active / Confirmed */}
           {renterActive.length > 0 ? (
             <section>
-              <h2 className="mb-4 text-lg font-semibold text-[var(--sea-ink)]">
+              <h2 className="mb-4 text-lg font-semibold text-[var(--text-dark)]">
                 Active Rentals
               </h2>
               <div className="space-y-4">
@@ -329,16 +344,16 @@ function DashboardPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-start justify-between gap-2">
                             <div>
-                              <p className="font-semibold text-[var(--sea-ink)]">
+                              <p className="font-semibold text-[var(--text-dark)]">
                                 {b.listing.title}
                               </p>
-                              <p className="text-xs text-[var(--sea-ink-soft)]">
+                              <p className="text-xs text-[var(--text-soft)]">
                                 📍 {b.listing.city}
                               </p>
                             </div>
                             <StatusBadge status={b.status} />
                           </div>
-                          <p className="mt-2 text-xs text-[var(--sea-ink-soft)]">
+                          <p className="mt-2 text-xs text-[var(--text-soft)]">
                             {formatDate(b.startDate)} → {formatDate(b.endDate)}
                           </p>
                           {b.status === 'ACTIVE' && (
@@ -352,12 +367,12 @@ function DashboardPage() {
                             </p>
                           )}
                           <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
-                            <span className="font-bold text-[var(--sea-ink)]">
+                            <span className="font-bold text-[var(--text-dark)]">
                               {formatINR(Number(b.totalPrice))}
                             </span>
                             {b.listing.securityDeposit &&
                               Number(b.listing.securityDeposit) > 0 && (
-                                <span className="text-xs text-[var(--sea-ink-soft)]">
+                                <span className="text-xs text-[var(--text-soft)]">
                                   🔒 {formatINR(Number(b.listing.securityDeposit))} deposit
                                 </span>
                               )}
@@ -372,15 +387,15 @@ function DashboardPage() {
           ) : (
             <div className="island-shell rounded-2xl p-10 text-center">
               <p className="mb-2 text-4xl">🏠</p>
-              <p className="font-semibold text-[var(--sea-ink)]">
+              <p className="font-semibold text-[var(--text-dark)]">
                 No active rentals
               </p>
-              <p className="mb-4 text-sm text-[var(--sea-ink-soft)]">
+              <p className="mb-4 text-sm text-[var(--text-soft)]">
                 Find something to rent nearby
               </p>
               <Link
                 to="/listings"
-                className="rounded-full bg-[var(--lagoon-deep)] px-5 py-2.5 text-sm font-semibold text-white no-underline transition hover:-translate-y-0.5"
+                className="rounded-full bg-[var(--brand)] px-5 py-2.5 text-sm font-semibold text-white no-underline transition hover:-translate-y-0.5"
               >
                 Browse listings
               </Link>
@@ -390,7 +405,7 @@ function DashboardPage() {
           {/* Pending */}
           {renterPending.length > 0 && (
             <section>
-              <h2 className="mb-4 text-lg font-semibold text-[var(--sea-ink)]">
+              <h2 className="mb-4 text-lg font-semibold text-[var(--text-dark)]">
                 Pending Requests
               </h2>
               <div className="space-y-4">
@@ -398,10 +413,10 @@ function DashboardPage() {
                   <div key={b.id} className="island-shell rounded-2xl p-5">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="font-semibold text-[var(--sea-ink)]">
+                        <p className="font-semibold text-[var(--text-dark)]">
                           {b.listing.title}
                         </p>
-                        <p className="text-xs text-[var(--sea-ink-soft)]">
+                        <p className="text-xs text-[var(--text-soft)]">
                           {formatDate(b.startDate)} → {formatDate(b.endDate)}
                         </p>
                         <p className="mt-1 text-xs text-yellow-700">
@@ -409,7 +424,7 @@ function DashboardPage() {
                         </p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-bold text-[var(--sea-ink)]">
+                        <span className="font-bold text-[var(--text-dark)]">
                           {formatINR(Number(b.totalPrice))}
                         </span>
                         <ActionButton
@@ -435,15 +450,15 @@ function DashboardPage() {
           {ownerList.length === 0 ? (
             <div className="island-shell rounded-2xl p-10 text-center">
               <p className="mb-2 text-4xl">📦</p>
-              <p className="font-semibold text-[var(--sea-ink)]">
+              <p className="font-semibold text-[var(--text-dark)]">
                 No bookings for your items yet
               </p>
-              <p className="mb-4 text-sm text-[var(--sea-ink-soft)]">
+              <p className="mb-4 text-sm text-[var(--text-soft)]">
                 List an item to start earning
               </p>
               <Link
                 to="/listings/new"
-                className="rounded-full bg-[var(--lagoon-deep)] px-5 py-2.5 text-sm font-semibold text-white no-underline transition hover:-translate-y-0.5"
+                className="rounded-full bg-[var(--brand)] px-5 py-2.5 text-sm font-semibold text-white no-underline transition hover:-translate-y-0.5"
               >
                 List an Item
               </Link>
@@ -453,7 +468,7 @@ function DashboardPage() {
               {/* Items currently out */}
               {providerActive.length > 0 && (
                 <section>
-                  <h2 className="mb-4 text-lg font-semibold text-[var(--sea-ink)]">
+                  <h2 className="mb-4 text-lg font-semibold text-[var(--text-dark)]">
                     Items Out on Rent
                   </h2>
                   <div className="space-y-4">
@@ -482,10 +497,10 @@ function DashboardPage() {
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-[var(--sea-ink)]">
+                              <p className="font-semibold text-[var(--text-dark)]">
                                 {b.listing.title}
                               </p>
-                              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--sea-ink-soft)]">
+                              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--text-soft)]">
                                 <span>👤 {b.renter?.name ?? 'Unknown'}</span>
                                 {b.renter?.phone && (
                                   <>
@@ -504,11 +519,11 @@ function DashboardPage() {
                                   </>
                                 )}
                               </div>
-                              <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
+                              <p className="mt-1 text-xs text-[var(--text-soft)]">
                                 {formatDate(b.startDate)} → {formatDate(b.endDate)}
                               </p>
                               <div className="mt-2 flex flex-wrap items-center gap-3">
-                                <span className="font-bold text-[var(--sea-ink)]">
+                                <span className="font-bold text-[var(--text-dark)]">
                                   {formatINR(Number(b.totalPrice))}
                                 </span>
                                 {b.listing.securityDeposit &&
@@ -523,7 +538,7 @@ function DashboardPage() {
                                   bookingId={b.id}
                                   targetStatus="COMPLETED"
                                   label="Return Confirmed"
-                                  className="bg-[var(--lagoon-deep)] text-white hover:bg-[var(--lagoon)]"
+                                  className="bg-[var(--brand)] text-white hover:bg-[var(--brand-light)]"
                                   onSuccess={handleStatusUpdate}
                                 />
                               </div>
@@ -539,7 +554,7 @@ function DashboardPage() {
               {/* Pending requests */}
               {providerPending.length > 0 && (
                 <section>
-                  <h2 className="mb-4 text-lg font-semibold text-[var(--sea-ink)]">
+                  <h2 className="mb-4 text-lg font-semibold text-[var(--text-dark)]">
                     Pending Requests
                   </h2>
                   <div className="space-y-4">
@@ -547,25 +562,25 @@ function DashboardPage() {
                       <div key={b.id} className="island-shell rounded-2xl p-5">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
-                            <p className="font-semibold text-[var(--sea-ink)]">
+                            <p className="font-semibold text-[var(--text-dark)]">
                               {b.listing.title}
                             </p>
-                            <p className="text-xs text-[var(--sea-ink-soft)]">
+                            <p className="text-xs text-[var(--text-soft)]">
                               👤 {b.renter?.name ?? 'Unknown'}
                             </p>
-                            <p className="text-xs text-[var(--sea-ink-soft)]">
+                            <p className="text-xs text-[var(--text-soft)]">
                               {formatDate(b.startDate)} → {formatDate(b.endDate)}
                             </p>
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-bold text-[var(--sea-ink)]">
+                            <span className="font-bold text-[var(--text-dark)]">
                               {formatINR(Number(b.totalPrice))}
                             </span>
                             <ActionButton
                               bookingId={b.id}
                               targetStatus="CONFIRMED"
                               label="Confirm"
-                              className="bg-[var(--lagoon-deep)] text-white hover:bg-[var(--lagoon)]"
+                              className="bg-[var(--brand)] text-white hover:bg-[var(--brand-light)]"
                               onSuccess={handleStatusUpdate}
                             />
                             <ActionButton
@@ -586,7 +601,7 @@ function DashboardPage() {
               {/* Confirmed but not yet active */}
               {providerConfirmed.length > 0 && (
                 <section>
-                  <h2 className="mb-4 text-lg font-semibold text-[var(--sea-ink)]">
+                  <h2 className="mb-4 text-lg font-semibold text-[var(--text-dark)]">
                     Confirmed — Awaiting Handover
                   </h2>
                   <div className="space-y-4">
@@ -594,13 +609,13 @@ function DashboardPage() {
                       <div key={b.id} className="island-shell rounded-2xl p-5">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
-                            <p className="font-semibold text-[var(--sea-ink)]">
+                            <p className="font-semibold text-[var(--text-dark)]">
                               {b.listing.title}
                             </p>
-                            <p className="text-xs text-[var(--sea-ink-soft)]">
+                            <p className="text-xs text-[var(--text-soft)]">
                               👤 {b.renter?.name ?? 'Unknown'}
                             </p>
-                            <p className="text-xs text-[var(--sea-ink-soft)]">
+                            <p className="text-xs text-[var(--text-soft)]">
                               {formatDate(b.startDate)} → {formatDate(b.endDate)}
                             </p>
                           </div>
@@ -628,10 +643,10 @@ function DashboardPage() {
           {historyItems.length === 0 ? (
             <div className="island-shell rounded-2xl p-10 text-center">
               <p className="mb-2 text-4xl">📋</p>
-              <p className="font-semibold text-[var(--sea-ink)]">
+              <p className="font-semibold text-[var(--text-dark)]">
                 No history yet
               </p>
-              <p className="text-sm text-[var(--sea-ink-soft)]">
+              <p className="text-sm text-[var(--text-soft)]">
                 Completed and cancelled bookings will appear here
               </p>
             </div>
@@ -643,20 +658,20 @@ function DashboardPage() {
                   className="island-shell flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="rounded-full border border-[var(--line)] bg-[var(--sand)] px-2.5 py-0.5 text-xs font-semibold text-[var(--sea-ink-soft)]">
+                    <span className="rounded-full border border-[var(--line)] bg-[var(--sand)] px-2.5 py-0.5 text-xs font-semibold text-[var(--text-soft)]">
                       {b.role}
                     </span>
                     <div>
-                      <p className="text-sm font-semibold text-[var(--sea-ink)]">
+                      <p className="text-sm font-semibold text-[var(--text-dark)]">
                         {b.listing.title}
                       </p>
-                      <p className="text-xs text-[var(--sea-ink-soft)]">
+                      <p className="text-xs text-[var(--text-soft)]">
                         {formatDate(b.startDate)} → {formatDate(b.endDate)}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="font-bold text-[var(--sea-ink)]">
+                    <span className="font-bold text-[var(--text-dark)]">
                       {formatINR(Number(b.totalPrice))}
                     </span>
                     <StatusBadge status={b.status} />
@@ -697,7 +712,7 @@ function VerifyCard({
     <div className="rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3">
       <div className="flex items-center gap-1.5">
         <span className="text-base">{icon}</span>
-        <span className="text-xs font-semibold text-[var(--sea-ink)]">
+        <span className="text-xs font-semibold text-[var(--text-dark)]">
           {label}
         </span>
         {verified ? (
@@ -705,16 +720,17 @@ function VerifyCard({
             ✓
           </span>
         ) : (
-          <span className="ml-auto text-[10px] text-[var(--sea-ink-soft)]">
+          <span className="ml-auto text-[10px] text-[var(--text-soft)]">
             —
           </span>
         )}
       </div>
       {value && (
-        <p className="mt-1 truncate text-[11px] text-[var(--sea-ink-soft)]">
+        <p className="mt-1 truncate text-[11px] text-[var(--text-soft)]">
           {value}
         </p>
       )}
     </div>
   )
 }
+p

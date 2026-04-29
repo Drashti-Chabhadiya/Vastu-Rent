@@ -1,8 +1,12 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
-import { categories, listings } from '../lib/api'
-import type { Listing } from '../lib/api'
-import { useAuth } from '../hooks/useAuth'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { ArrowRight, ShieldCheck, BadgeCheck, Truck, Star } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { categories, listings } from '@/lib/api'
+import type { Listing } from '@/lib/api'
+import { useAuth } from '@/hooks/useAuth'
+import { cn } from "../lib/utils";
 
 export const Route = createFileRoute('/')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -11,351 +15,127 @@ export const Route = createFileRoute('/')({
   loader: async () => {
     const [cats, featured] = await Promise.all([
       categories.list(),
-      listings.search({ limit: 8 }),
+      listings.search({ limit: 6 }),
     ])
     return { cats, featured: featured.data }
   },
   component: HomePage,
 })
 
-// ── Popular cities for quick-filter ──────────────────────────────────────────
-const CITIES = [
-  'Mumbai',
-  'Delhi',
-  'Bengaluru',
-  'Hyderabad',
-  'Ahmedabad',
-  'Chennai',
-  'Kolkata',
-  'Pune',
-  'Surat',
-  'Jaipur',
+const FEATURES = [
+  {
+    icon: ShieldCheck,
+    title: 'Honest Pricing',
+    desc: 'Clear daily rate plus a refundable deposit. No surprises.',
+  },
+  {
+    icon: BadgeCheck,
+    title: 'Verified Owners',
+    desc: 'Every Admin is reviewed by our team before going live.',
+  },
+  {
+    icon: Truck,
+    title: 'Doorstep Delivery',
+    desc: 'Owners coordinate pickup and drop across major Indian cities.',
+  },
+  {
+    icon: Star,
+    title: 'Curated Quality',
+    desc: 'Only beautifully maintained pieces make it onto VastuRent.',
+  },
 ]
 
 function HomePage() {
   const { cats, featured } = Route.useLoaderData()
-  const { accessDenied } = Route.useSearch()
   const { user } = useAuth()
-  const navigate = useNavigate()
-  const [showDenied, setShowDenied] = useState(!!accessDenied)
-
-  // Clear the accessDenied param from the URL after showing the banner
-  useEffect(() => {
-    if (accessDenied) {
-      navigate({ to: '/', search: { accessDenied: undefined }, replace: true })
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Hyper-local state ───────────────────────────────────────────────────────
-  const [nearbyItems, setNearbyItems] = useState<Listing[]>([])
-  const [nearbyLoading, setNearbyLoading] = useState(false)
-  const [nearbyRadius, setNearbyRadius] = useState(10)
-  const [geoGranted, setGeoGranted] = useState(false)
-  const [userLat, setUserLat] = useState<number | null>(null)
-  const [userLng, setUserLng] = useState<number | null>(null)
-
-  // Auto-request location on mount (silent — no prompt if already denied)
-  useEffect(() => {
-    if (!navigator.geolocation) return
-    navigator.permissions
-      ?.query({ name: 'geolocation' })
-      .then((result) => {
-        if (result.state === 'granted') fetchNearby()
-      })
-      .catch(() => {
-        // permissions API not available — skip silent check
-      })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  function fetchNearby(lat?: number, lng?: number, radius = nearbyRadius) {
-    const useLat = lat ?? userLat
-    const useLng = lng ?? userLng
-    if (useLat === null || useLng === null) return
-
-    setNearbyLoading(true)
-    listings
-      .search({ lat: useLat, lng: useLng, radiusKm: radius, limit: 8 })
-      .then((res) => {
-        setNearbyItems(res.data)
-        setNearbyLoading(false)
-      })
-      .catch(() => setNearbyLoading(false))
-  }
-
-  function requestLocation() {
-    if (!navigator.geolocation) return
-    setNearbyLoading(true)
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude: lat, longitude: lng } = pos.coords
-        setUserLat(lat)
-        setUserLng(lng)
-        setGeoGranted(true)
-        fetchNearby(lat, lng, nearbyRadius)
-      },
-      () => setNearbyLoading(false),
-      { enableHighAccuracy: true, timeout: 10_000 },
-    )
-  }
-
-  function changeRadius(r: number) {
-    setNearbyRadius(r)
-    fetchNearby(undefined, undefined, r)
-  }
 
   return (
-    <main className="page-wrap px-4 pb-16 pt-10">
-      {/* ── Access Denied Banner ─────────────────────────────────────────── */}
-      {showDenied && (
-        <div className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-5 py-4">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🚫</span>
+    <main>
+      {/* ── Hero ── */}
+      <section className={cn('relative', 'overflow-hidden')} style={{ minHeight: '480px' }}>
+        <div
+          className={cn('absolute', 'inset-0', 'bg-cover', 'bg-center')}
+          style={{ backgroundImage: "url('/assets/hero-vasturent.jpg')" }}
+        />
+        <div
+          className={cn('absolute', 'inset-0')}
+          style={{ background: 'linear-gradient(to right, rgba(253,246,236,0.94) 0%, rgba(253,246,236,0.78) 52%, rgba(253,246,236,0.25) 100%)' }}
+        />
+        <div className={cn('page-wrap', 'relative', 'px-4', 'py-20', 'sm:py-28')}>
+          <Badge variant="secondary" className={cn('mb-4', 'gap-1.5', 'rounded-full', 'px-3', 'py-1.5', 'text-xs')} style={{ background: 'rgba(139,69,19,0.1)', color: 'var(--brand)', border: '1px solid rgba(139,69,19,0.2)' }}>
+            <span>✦</span> Curated rentals for every occasion
+          </Badge>
+
+          <h1
+            className={cn('display-title', 'mb-4', 'max-w-lg', 'text-4xl', 'font-bold', 'leading-tight', 'sm:text-5xl')}
+            style={{ color: 'var(--text-dark)' }}
+          >
+            Create Your Dream Space,{' '}
+            <span style={{ color: 'var(--brand)' }}>One Rental at a Time</span>
+          </h1>
+
+          <p className={cn('mb-8', 'max-w-md', 'text-base', 'leading-relaxed')} style={{ color: 'var(--text-mid)' }}>
+            Discover handpicked furniture, decor and essentials to furnish your home or celebrate your special event — affordably and sustainably.
+          </p>
+
+          <div className={cn('flex', 'flex-wrap', 'gap-3')}>
+            <Button size="lg" asChild>
+              <Link to="/listings">Explore Rentals</Link>
+            </Button>
+            <Button size="lg" variant="outline" asChild>
+              <Link to="/listings/new">List Your Items</Link>
+            </Button>
+          </div>
+
+          {user && (
+            <p className={cn('mt-5', 'text-sm')} style={{ color: 'var(--text-soft)' }}>
+              Welcome back, <strong style={{ color: 'var(--text-dark)' }}>{user.name.split(' ')[0]}</strong>
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* ── Feature cards ── */}
+      <section className={cn('page-wrap', 'px-4', 'py-12')}>
+        <div className={cn('grid', 'gap-4', 'sm:grid-cols-2', 'lg:grid-cols-4')}>
+          {FEATURES.map((f) => {
+            const Icon = f.icon
+            return (
+              <Card key={f.title} className={cn('feature-card', 'border-0', 'p-6')}>
+                <CardContent className="p-0">
+                  <div
+                    className={cn('mb-3', 'flex', 'h-12', 'w-12', 'items-center', 'justify-center', 'rounded-xl')}
+                    style={{ background: 'rgba(139,69,19,0.1)', color: 'var(--brand)' }}
+                  >
+                    <Icon className={cn('h-6', 'w-6')} />
+                  </div>
+                  <h3 className={cn('mb-1.5', 'text-base', 'font-semibold')} style={{ color: 'var(--brand)' }}>{f.title}</h3>
+                  <p className={cn('m-0', 'text-sm', 'leading-relaxed')} style={{ color: 'var(--text-soft)' }}>{f.desc}</p>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      </section>
+
+      {/* ── Featured Rentals ── */}
+      {featured.length > 0 && (
+        <section className={cn('page-wrap', 'px-4', 'pb-14')}>
+          <div className={cn('mb-6', 'flex', 'items-end', 'justify-between')}>
             <div>
-              <p className="font-semibold text-red-800">Access Denied</p>
-              <p className="text-sm text-red-700">
-                You don't have permission to access that page.
+              <h2 className={cn('display-title', 'text-2xl', 'font-bold')} style={{ color: 'var(--text-dark)' }}>
+                Featured Rentals
+              </h2>
+              <p className={cn('mt-1', 'text-sm')} style={{ color: 'var(--text-soft)' }}>
+                Handpicked pieces our community is loving this week.
               </p>
             </div>
-          </div>
-          <button
-            onClick={() => setShowDenied(false)}
-            className="rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-100"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
-      {/* ── Hero ─────────────────────────────────────────────────────────── */}
-      <section className="island-shell rise-in relative overflow-hidden rounded-[2rem] px-6 py-12 sm:px-12 sm:py-16">
-        <div className="pointer-events-none absolute -left-20 -top-24 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(79,184,178,0.32),transparent_66%)]" />
-        <div className="pointer-events-none absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(47,106,74,0.18),transparent_66%)]" />
-
-        <p className="island-kicker mb-3">Vastu-Rent · Sharing Economy</p>
-        <h1 className="display-title mb-5 max-w-3xl text-4xl font-bold leading-[1.02] tracking-tight text-[var(--sea-ink)] sm:text-6xl">
-          Rent anything from your neighbours.
-        </h1>
-        <p className="mb-8 max-w-2xl text-base text-[var(--sea-ink-soft)] sm:text-lg">
-          Tools, cameras, bikes, camping gear — borrow what you need from people
-          nearby. List what you own and earn while it sits idle.
-        </p>
-
-        {/* Search bar */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            const q = (e.currentTarget.elements.namedItem('q') as HTMLInputElement).value.trim()
-            navigate({ to: '/listings', search: q ? { q } : {} })
-          }}
-          className="flex max-w-xl flex-col gap-3 sm:flex-row"
-        >
-          <input
-            name="q"
-            type="search"
-            placeholder="What do you need? (e.g. drill, kayak…)"
-            className="flex-1 rounded-full border border-[var(--line)] bg-[var(--surface-strong)] px-5 py-3 text-sm text-[var(--sea-ink)] placeholder:text-[var(--sea-ink-soft)] outline-none focus:border-[var(--lagoon)] focus:ring-2 focus:ring-[rgba(79,184,178,0.25)]"
-          />
-          <button
-            type="submit"
-            className="rounded-full bg-[var(--lagoon-deep)] px-6 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--lagoon)]"
-          >
-            Search
-          </button>
-        </form>
-
-        {/* Personalised greeting */}
-        {user && (
-          <p className="mt-5 text-sm text-[var(--sea-ink-soft)]">
-            👋 Welcome back, <strong>{user.name.split(' ')[0]}</strong>
-            {user.neighborhood ? ` · ${user.neighborhood}` : ''}
-          </p>
-        )}
-      </section>
-
-      {/* ── City quick-filter ─────────────────────────────────────────────── */}
-      <section className="mt-8">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          <span className="flex-shrink-0 text-xs font-semibold text-[var(--sea-ink-soft)]">
-            🏙️ Browse by city:
-          </span>
-          {CITIES.map((city) => (
-            <button
-              key={city}
-              type="button"
-              onClick={() => navigate({ to: '/listings', search: { q: city } })}
-              className="flex-shrink-0 rounded-full border border-[var(--chip-line)] bg-[var(--chip-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--sea-ink)] transition hover:-translate-y-0.5 hover:border-[var(--lagoon)] hover:bg-[rgba(79,184,178,0.1)]"
-            >
-              {city}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* ── Categories ───────────────────────────────────────────────────── */}
-      {cats.length > 0 && (
-        <section className="mt-10">
-          <h2 className="mb-4 text-lg font-semibold text-[var(--sea-ink)]">
-            Browse by category
-          </h2>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
-            {cats.map((cat) => (
-              <Link
-                key={cat.id}
-                to="/listings"
-                search={{ categoryId: cat.id }}
-                className="island-shell feature-card flex flex-col items-center gap-2 rounded-2xl border border-[var(--line)] p-4 text-center no-underline transition"
-              >
-                <span className="text-2xl">{cat.icon ?? '📦'}</span>
-                <span className="text-xs font-semibold text-[var(--sea-ink)]">
-                  {cat.name}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ── Hyper-local section ───────────────────────────────────────────── */}
-      <section className="mt-12">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-[var(--sea-ink)]">
-              📍 Near You
-            </h2>
-            <p className="text-xs text-[var(--sea-ink-soft)]">
-              Items available within {nearbyRadius} km of your location
-            </p>
+            <Button variant="link" size="sm" className={cn('gap-1', 'p-0')} asChild>
+              <Link to="/listings">Browse all <ArrowRight className={cn('h-3.5', 'w-3.5')} /></Link>
+            </Button>
           </div>
 
-          <div className="flex items-center gap-2">
-            {geoGranted && (
-              <div className="flex items-center gap-1 rounded-full border border-[var(--line)] bg-[var(--surface-strong)] p-1">
-                {[5, 10, 25].map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => changeRadius(r)}
-                    className={[
-                      'rounded-full px-3 py-1 text-xs font-semibold transition',
-                      nearbyRadius === r
-                        ? 'bg-[var(--lagoon-deep)] text-white'
-                        : 'text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]',
-                    ].join(' ')}
-                  >
-                    {r} km
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {!geoGranted && (
-              <button
-                type="button"
-                onClick={requestLocation}
-                disabled={nearbyLoading}
-                className="flex items-center gap-2 rounded-full bg-[var(--lagoon-deep)] px-4 py-2 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--lagoon)] disabled:opacity-60"
-              >
-                {nearbyLoading ? (
-                  <>
-                    <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Locating…
-                  </>
-                ) : (
-                  <>📡 Enable location</>
-                )}
-              </button>
-            )}
-
-            {geoGranted && (
-              <Link
-                to="/listings"
-                search={{ lat: userLat ?? undefined, lng: userLng ?? undefined, radiusKm: nearbyRadius }}
-                className="text-sm font-semibold text-[var(--lagoon-deep)] no-underline hover:underline"
-              >
-                View all →
-              </Link>
-            )}
-          </div>
-        </div>
-
-        {/* Not yet enabled */}
-        {!geoGranted && !nearbyLoading && nearbyItems.length === 0 && (
-          <div className="island-shell flex flex-col items-center gap-3 rounded-2xl p-10 text-center">
-            <span className="text-5xl">🗺️</span>
-            <p className="font-semibold text-[var(--sea-ink)]">
-              Discover items near you
-            </p>
-            <p className="max-w-sm text-sm text-[var(--sea-ink-soft)]">
-              Enable location to see what's available within {nearbyRadius} km.
-              Your location is never stored or shared.
-            </p>
-            <button
-              type="button"
-              onClick={requestLocation}
-              className="rounded-full bg-[var(--lagoon-deep)] px-6 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--lagoon)]"
-            >
-              📡 Show items near me
-            </button>
-          </div>
-        )}
-
-        {/* Loading skeleton */}
-        {nearbyLoading && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="island-shell overflow-hidden rounded-2xl">
-                <div className="aspect-[4/3] w-full animate-pulse bg-[var(--sand)]" />
-                <div className="space-y-2 p-4">
-                  <div className="h-3 w-1/3 animate-pulse rounded-full bg-[var(--sand)]" />
-                  <div className="h-4 w-3/4 animate-pulse rounded-full bg-[var(--sand)]" />
-                  <div className="h-3 w-1/2 animate-pulse rounded-full bg-[var(--sand)]" />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Results */}
-        {!nearbyLoading && nearbyItems.length > 0 && (
-          <>
-            {nearbyItems.length === 0 ? (
-              <div className="island-shell rounded-2xl p-8 text-center text-[var(--sea-ink-soft)]">
-                <p className="text-3xl">🔍</p>
-                <p className="mt-2 font-semibold">Nothing within {nearbyRadius} km</p>
-                <button
-                  type="button"
-                  onClick={() => changeRadius(nearbyRadius === 5 ? 10 : nearbyRadius === 10 ? 25 : 50)}
-                  className="mt-2 text-sm font-semibold text-[var(--lagoon-deep)] hover:underline"
-                >
-                  Expand to {nearbyRadius === 5 ? 10 : nearbyRadius === 10 ? 25 : 50} km →
-                </button>
-              </div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {nearbyItems.map((item, i) => (
-                  <ListingCard key={item.id} listing={item} delay={i * 50} showDistance />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </section>
-
-      {/* ── Trending (fallback / always visible) ─────────────────────────── */}
-      {featured.length > 0 && (
-        <section className="mt-12">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-[var(--sea-ink)]">
-              🔥 Trending Listings
-            </h2>
-            <Link
-              to="/listings"
-              className="text-sm font-semibold text-[var(--lagoon-deep)] no-underline hover:underline"
-            >
-              View all →
-            </Link>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className={cn('grid', 'gap-5', 'sm:grid-cols-2', 'lg:grid-cols-3')}>
             {featured.map((item, i) => (
               <ListingCard key={item.id} listing={item} delay={i * 60} />
             ))}
@@ -363,89 +143,104 @@ function HomePage() {
         </section>
       )}
 
-      {/* ── How it works ──────────────────────────────────────────────────── */}
-      <section className="island-shell mt-14 rounded-2xl p-8">
-        <p className="island-kicker mb-4">How it works</p>
-        <div className="grid gap-6 sm:grid-cols-3">
-          {[
-            ['🔍', 'Find', 'Search by location or category to discover items near you.'],
-            ['💬', 'Connect', 'Chat directly with the owner to arrange pickup and details.'],
-            ['🤝', 'Rent', 'Agree on dates, pay securely, and enjoy the item.'],
-          ].map(([icon, title, desc]) => (
-            <div key={title} className="flex flex-col gap-2">
-              <span className="text-3xl">{icon}</span>
-              <h3 className="text-base font-semibold text-[var(--sea-ink)]">{title}</h3>
-              <p className="m-0 text-sm text-[var(--sea-ink-soft)]">{desc}</p>
-            </div>
-          ))}
+      {/* ── Categories ── */}
+      {cats.length > 0 && (
+        <section className={cn('page-wrap', 'px-4', 'pb-14')}>
+          <h2 className={cn('display-title', 'mb-6', 'text-2xl', 'font-bold')} style={{ color: 'var(--text-dark)' }}>
+            Shop by Category
+          </h2>
+          <div className={cn('grid', 'grid-cols-2', 'gap-3', 'sm:grid-cols-4', 'lg:grid-cols-8')}>
+            {cats.map((cat) => (
+              <Link
+                key={cat.id}
+                to="/listings"
+                search={{ categoryId: cat.id }}
+                className="no-underline"
+              >
+                <Card className={cn('feature-card', 'flex', 'flex-col', 'items-center', 'gap-2', 'p-4', 'text-center', 'transition-all', 'hover:-translate-y-1', 'cursor-pointer')}>
+                  <span className="text-2xl">{cat.icon ?? '📦'}</span>
+                  <span className={cn('text-xs', 'font-semibold')} style={{ color: 'var(--text-dark)' }}>{cat.name}</span>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Owner CTA ── */}
+      <section className={cn('page-wrap', 'px-4', 'pb-16')}>
+        <div className={cn('rounded-2xl', 'px-8', 'py-10')} style={{ background: 'var(--brand)' }}>
+          <h2 className={cn('display-title', 'mb-2', 'text-2xl', 'font-bold', 'text-white')}>
+            Have items lying unused?
+          </h2>
+          <p className={cn('mb-6', 'max-w-lg', 'text-sm', 'leading-relaxed')} style={{ color: 'rgba(255,255,255,0.85)' }}>
+            Turn them into income. Apply to become a VastuRent Admin and start listing today — free verification, fair commissions.
+          </p>
+          <Button variant="amber" asChild>
+            <Link to="/auth/register">Become an Owner</Link>
+          </Button>
         </div>
       </section>
     </main>
   )
 }
 
-// ── Listing card ──────────────────────────────────────────────────────────────
+function ListingCard({ listing, delay = 0 }: { listing: Listing; delay?: number }) {
+  const isRentedOut = listing.status === 'RENTED' || listing.status === 'UNAVAILABLE'
 
-function ListingCard({
-  listing,
-  delay = 0,
-  showDistance = false,
-}: {
-  listing: Listing
-  delay?: number
-  showDistance?: boolean
-}) {
   return (
     <Link
       to="/listings/$id"
       params={{ id: listing.id }}
-      className="island-shell feature-card rise-in group block overflow-hidden rounded-2xl border border-[var(--line)] no-underline"
+      className={cn('rise-in', 'group', 'block', 'no-underline')}
       style={{ animationDelay: `${delay}ms` }}
     >
-      {/* Image */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--sand)]">
-        {listing.images[0] ? (
-          <img
-            src={listing.images[0]}
-            alt={listing.title}
-            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-4xl">📦</div>
-        )}
-        {/* Category badge */}
-        <span className="absolute left-2.5 top-2.5 rounded-full bg-black/40 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-sm">
-          {listing.category.icon} {listing.category.name}
-        </span>
-        {/* Distance badge (shown when geo is active) */}
-        {showDistance && (
-          <span className="absolute right-2.5 top-2.5 rounded-full bg-[var(--lagoon-deep)]/90 px-2.5 py-1 text-[10px] font-bold text-white backdrop-blur-sm">
-            📍 Nearby
-          </span>
-        )}
-      </div>
-
-      {/* Info */}
-      <div className="p-4">
-        <h3 className="mb-1 line-clamp-2 text-sm font-semibold text-[var(--sea-ink)]">
-          {listing.title}
-        </h3>
-        <p className="m-0 text-xs text-[var(--sea-ink-soft)]">
-          📍 {listing.city}
-          {listing.state ? `, ${listing.state}` : ''}
-        </p>
-        <div className="mt-2 flex items-center justify-between">
-          <p className="text-sm font-bold text-[var(--lagoon-deep)]">
-            ₹{Number(listing.pricePerDay).toFixed(0)}
-            <span className="font-normal text-[var(--sea-ink-soft)]"> / day</span>
-          </p>
-          {listing._count && listing._count.reviews > 0 && (
-            <span className="text-xs text-[var(--sea-ink-soft)]">
-              ⭐ {listing._count.reviews}
-            </span>
+      <Card className={cn('feature-card', 'overflow-hidden', 'border-0')}>
+        <div className={cn('relative', 'overflow-hidden')} style={{ aspectRatio: '4/3', background: 'var(--sand)' }}>
+          {listing.images[0] ? (
+            <img
+              src={listing.images[0]}
+              alt={listing.title}
+              className={cn('h-full', 'w-full', 'object-cover', 'transition', 'duration-300', 'group-hover:scale-105')}
+            />
+          ) : (
+            <div className={cn('flex', 'h-full', 'items-center', 'justify-center', 'text-4xl')} style={{ background: 'var(--sand)' }}>
+              🛋️
+            </div>
+          )}
+          <span className={cn('cat-pill', 'absolute', 'left-2.5', 'top-2.5')}>{listing.category.name}</span>
+          {isRentedOut && (
+            <Badge variant="destructive" className={cn('absolute', 'left-1/2', 'top-1/2', '-translate-x-1/2', '-translate-y-1/2', 'uppercase', 'tracking-wide', 'text-[10px]')}>
+              Rented Out
+            </Badge>
           )}
         </div>
-      </div>
+
+        <CardContent className="p-4">
+          <h3 className={cn('mb-1', 'line-clamp-1', 'text-sm', 'font-semibold')} style={{ color: 'var(--text-dark)' }}>
+            {listing.title}
+          </h3>
+          <p className={cn('mb-3', 'text-xs')} style={{ color: 'var(--text-soft)' }}>
+            by {listing.owner.name}
+          </p>
+          <div className={cn('flex', 'items-end', 'justify-between')}>
+            <div>
+              <p className={cn('text-sm', 'font-bold')} style={{ color: 'var(--text-dark)' }}>
+                ₹{Number(listing.pricePerDay).toFixed(0)}
+                <span className={cn('font-normal', 'text-xs')} style={{ color: 'var(--text-soft)' }}>/day</span>
+              </p>
+              {listing.securityDeposit && Number(listing.securityDeposit) > 0 && (
+                <p className="text-xs" style={{ color: 'var(--text-soft)' }}>
+                  Deposit ₹{Number(listing.securityDeposit).toLocaleString('en-IN')}
+                </p>
+              )}
+            </div>
+            <span className={cn('flex', 'items-center', 'gap-0.5', 'text-xs', 'font-semibold')} style={{ color: 'var(--brand)' }}>
+              View <ArrowRight className={cn('h-3', 'w-3')} />
+            </span>
+          </div>
+        </CardContent>
+      </Card>
     </Link>
   )
 }

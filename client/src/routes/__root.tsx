@@ -5,88 +5,77 @@ import { useEffect, useState } from 'react'
 import Footer from '../components/Footer'
 import Header from '../components/Header'
 import { auth } from '../lib/api'
-import { authStore } from '../lib/auth-store'
+import { useAuthStore } from '../lib/auth-store'
 import { useSocket } from '../hooks/useSocket'
 
 import appCss from '../styles.css?url'
 
-const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('theme');var mode=(stored==='light'||stored==='dark'||stored==='auto')?stored:'auto';var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var resolved=mode==='auto'?(prefersDark?'dark':'light'):mode;var root=document.documentElement;root.classList.remove('light','dark');root.classList.add(resolved);if(mode==='auto'){root.removeAttribute('data-theme')}else{root.setAttribute('data-theme',mode)}root.style.colorScheme=resolved;}catch(e){}})();`
+// Inline script: apply saved theme before first paint (no flash)
+const THEME_SCRIPT = `(function(){try{
+  var t=localStorage.getItem('theme');
+  var m=(t==='light'||t==='dark'||t==='auto')?t:'auto';
+  var d=window.matchMedia('(prefers-color-scheme: dark)').matches;
+  var r=m==='auto'?(d?'dark':'light'):m;
+  document.documentElement.classList.add(r);
+  if(m!=='auto')document.documentElement.setAttribute('data-theme',m);
+  document.documentElement.style.colorScheme=r;
+}catch(e){}})();`
 
 export const Route = createRootRoute({
   head: () => ({
     meta: [
-      {
-        charSet: 'utf-8',
-      },
-      {
-        name: 'viewport',
-        content: 'width=device-width, initial-scale=1',
-      },
-      {
-        title: 'Vastu-Rent – Hyper-local P2P Rental Marketplace',
-      },
+      { charSet: 'utf-8' },
+      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+      { title: 'VastuRent - Curated Rentals for Every Occasion' },
     ],
-    links: [
-      {
-        rel: 'stylesheet',
-        href: appCss,
-      },
-    ],
+    links: [{ rel: 'stylesheet', href: appCss }],
   }),
   component: RootComponent,
   shellComponent: RootDocument,
 })
 
 function RootComponent() {
-  const socket = useSocket()
+  const socket        = useSocket()
+  const silentRefresh = useAuthStore((s) => s.silentRefresh)
+  const setUser       = useAuthStore((s) => s.setUser)
+  const clearAuth     = useAuthStore((s) => s.clearAuth)
 
-  // ── Refresh user on load ──────────────────────────────────────────────────
-  // Re-fetch from server so role changes (e.g. ADMIN promotion) take effect
-  // without requiring a fresh login.
+  // Boot: restore session from HttpOnly refresh cookie.
+  // silentRefresh() is a singleton — if the route loader already triggered it,
+  // this just awaits the same promise. No double HTTP request, no token rotation issue.
   useEffect(() => {
-    const { token } = authStore.getSnapshot()
-    if (!token) return
-    auth.me().then((freshUser) => {
-      authStore.setAuth(token, freshUser)
-    }).catch(() => {
-      authStore.clearAuth()
+    silentRefresh().then((token) => {
+      if (token) {
+        // Fetch fresh user profile so role changes take effect without re-login
+        auth.me()
+          .then((u) => setUser(u))
+          .catch(() => clearAuth())
+      }
+      // If null, clearAuth() was already called inside silentRefresh()
     })
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Global notification toast ─────────────────────────────────────────────
-  // Listens for booking/message notifications pushed via Socket.io and shows
-  // a dismissible toast anywhere on the site.
   const [toasts, setToasts] = useState<
     { id: number; title: string; body: string; type: string }[]
   >([])
 
   useEffect(() => {
     if (!socket) return
-
     function onNotification(n: { type: string; title: string; body: string }) {
       const id = Date.now()
       setToasts((prev) => [...prev, { id, ...n }])
-      setTimeout(() => {
-        setToasts((prev) => prev.filter((t) => t.id !== id))
-      }, 7000)
+      setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 7000)
     }
-
     socket.on('notification:new', onNotification)
     return () => { socket.off('notification:new', onNotification) }
   }, [socket])
 
-  function dismissToast(id: number) {
-    setToasts((prev) => prev.filter((t) => t.id !== id))
-  }
-
-  // Icon per notification type
   function toastIcon(type: string) {
-    if (type === 'booking_request') return '📦'
-    if (type === 'booking_confirmed') return '✅'
-    if (type === 'booking_cancelled') return '❌'
-    if (type === 'booking_completed') return '🎉'
-    if (type === 'message') return '💬'
-    return '🔔'
+    const icons: Record<string, string> = {
+      booking_request: '📦', booking_confirmed: '✅',
+      booking_cancelled: '❌', booking_completed: '🎉', message: '💬',
+    }
+    return icons[type] ?? '🔔'
   }
 
   return (
@@ -95,26 +84,29 @@ function RootComponent() {
       <Outlet />
       <Footer />
 
-      {/* ── Notification toasts ──────────────────────────────────────────── */}
       <div className="fixed bottom-6 right-4 z-50 flex flex-col gap-3 sm:right-6">
         {toasts.map((t) => (
           <div
             key={t.id}
-            className="flex w-80 max-w-[calc(100vw-2rem)] items-start gap-3 rounded-2xl border border-[var(--lagoon)] bg-[var(--surface-strong)] p-4 shadow-[0_8px_32px_rgba(30,90,72,0.18)] backdrop-blur-md"
-            style={{ animation: 'rise-in 300ms cubic-bezier(0.16,1,0.3,1) both' }}
+            className="flex w-80 max-w-[calc(100vw-2rem)] items-start gap-3 rounded-2xl p-4 backdrop-blur-md"
+            style={{
+              border: '1px solid var(--line)',
+              background: 'var(--surface-strong)',
+              boxShadow: '0 8px 32px rgba(139,69,19,0.15)',
+              animation: 'rise-in 300ms cubic-bezier(0.16,1,0.3,1) both',
+            }}
           >
             <span className="mt-0.5 text-xl">{toastIcon(t.type)}</span>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-[var(--sea-ink)]">{t.title}</p>
-              <p className="mt-0.5 line-clamp-2 text-xs text-[var(--sea-ink-soft)]">{t.body}</p>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-dark)' }}>{t.title}</p>
+              <p className="mt-0.5 line-clamp-2 text-xs" style={{ color: 'var(--text-soft)' }}>{t.body}</p>
             </div>
             <button
-              onClick={() => dismissToast(t.id)}
-              className="flex-shrink-0 text-sm text-[var(--sea-ink-soft)] transition hover:text-[var(--sea-ink)]"
-              aria-label="Dismiss notification"
-            >
-              ✕
-            </button>
+              onClick={() => setToasts((p) => p.filter((x) => x.id !== t.id))}
+              className="shrink-0 text-sm opacity-60 transition hover:opacity-100"
+              style={{ color: 'var(--text-soft)' }}
+              aria-label="Dismiss"
+            >x</button>
           </div>
         ))}
       </div>
@@ -131,10 +123,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
         <HeadContent />
       </head>
-      <body className="font-sans antialiased [overflow-wrap:anywhere] selection:bg-[rgba(79,184,178,0.24)]">
+      <body className="font-sans antialiased" style={{ overflowWrap: 'anywhere' }}>
         {children}
         <Scripts />
       </body>

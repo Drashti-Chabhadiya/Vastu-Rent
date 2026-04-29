@@ -69,6 +69,7 @@ model User {
   sentMessages     Message[]       @relation("SentMessages")
   conversations    Conversation[]  @relation("ConversationParticipants")
   notifications    Notification[]
+  refreshTokens    RefreshToken[]
 
   @@map("users")
 }
@@ -209,6 +210,21 @@ model Message {
 
   @@index([conversationId])
   @@map("messages")
+}
+
+// ─── RefreshToken ─────────────────────────────────────────────────────────────
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique          // bcrypt hash of the raw token
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revokedAt DateTime?                 // null = still valid
+
+  @@index([userId])
+  @@map("refresh_tokens")
 }
 
 // ─── Notification ─────────────────────────────────────────────────────────────

@@ -3,7 +3,9 @@ import { z } from 'zod'
 const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(16),
-  JWT_EXPIRES_IN: z.string().default('7d'),
+  JWT_EXPIRES_IN: z.string().default('15m'),          // short-lived access token
+  REFRESH_TOKEN_SECRET: z.string().min(16),
+  REFRESH_TOKEN_EXPIRES_IN: z.string().default('7d'), // long-lived refresh token
   PORT: z.coerce.number().default(4000),
   HOST: z.string().default('0.0.0.0'),
   NODE_ENV: z

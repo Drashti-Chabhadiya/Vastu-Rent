@@ -1,8 +1,3 @@
-/**
- * /admin — dedicated Super Admin route.
- * Redirects non-SUPER_ADMIN users to home with an access-denied message.
- * ADMIN users are redirected to /dashboard (their admin panel is there).
- */
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useAuth } from '../hooks/useAuth'
@@ -13,24 +8,34 @@ export const Route = createFileRoute('/admin')({
 })
 
 function AdminRoutePage() {
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, initializing } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
+    // Wait for boot-time silent refresh before checking roles
+    if (initializing) return
+
     if (!isAuthenticated) {
       navigate({ to: '/auth/login' })
       return
     }
     if (user?.role === 'ADMIN') {
-      // Regular admins use the dashboard
       navigate({ to: '/dashboard' })
       return
     }
     if (user?.role !== 'SUPER_ADMIN') {
-      // USER role — access denied
       navigate({ to: '/', search: { accessDenied: '1' } })
     }
-  }, [isAuthenticated, user?.role, navigate])
+  }, [initializing, isAuthenticated, user?.role, navigate])
+
+  // Show spinner while session is being restored
+  if (initializing) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--brand)] border-t-transparent" />
+      </div>
+    )
+  }
 
   if (!isAuthenticated || user?.role !== 'SUPER_ADMIN') return null
 

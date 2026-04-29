@@ -195,10 +195,10 @@ function NewListingPage() {
       {/* Page header */}
       <div className="mb-8">
         <p className="island-kicker mb-1">Provider</p>
-        <h1 className="display-title text-3xl font-bold text-[var(--sea-ink)]">
+        <h1 className="display-title text-3xl font-bold text-[var(--text-dark)]">
           List an Item
         </h1>
-        <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">
+        <p className="mt-1 text-sm text-[var(--text-soft)]">
           Earn money by renting out what you own to neighbours nearby.
         </p>
       </div>
@@ -214,19 +214,19 @@ function NewListingPage() {
                 onClick={() => i < step && setStep(i)}
                 className={[
                   'flex flex-col items-center gap-1 text-xs font-semibold transition',
-                  i < step ? 'cursor-pointer text-[var(--lagoon-deep)]' : '',
-                  i === step ? 'text-[var(--lagoon-deep)]' : '',
-                  i > step ? 'cursor-default text-[var(--sea-ink-soft)] opacity-50' : '',
+                  i < step ? 'cursor-pointer text-[var(--brand)]' : '',
+                  i === step ? 'text-[var(--brand)]' : '',
+                  i > step ? 'cursor-default text-[var(--text-soft)] opacity-50' : '',
                 ].join(' ')}
               >
                 <span
                   className={[
                     'flex h-9 w-9 items-center justify-center rounded-full border-2 text-base transition',
                     i < step
-                      ? 'border-[var(--lagoon-deep)] bg-[var(--lagoon-deep)] text-white'
+                      ? 'border-[var(--brand)] bg-[var(--brand)] text-white'
                       : '',
                     i === step
-                      ? 'border-[var(--lagoon-deep)] bg-[var(--lagoon-deep)] text-white shadow-[0_0_0_4px_rgba(79,184,178,0.2)]'
+                      ? 'border-[var(--brand)] bg-[var(--brand)] text-white shadow-[0_0_0_4px_rgba(79,184,178,0.2)]'
                       : '',
                     i > step
                       ? 'border-[var(--line)] bg-[var(--surface-strong)]'
@@ -243,7 +243,7 @@ function NewListingPage() {
           <div className="relative -mt-[2.125rem] flex items-center px-[1.125rem]">
             <div className="h-0.5 w-full bg-[var(--line)]">
               <div
-                className="h-full bg-[var(--lagoon-deep)] transition-all duration-500"
+                className="h-full bg-[var(--brand)] transition-all duration-500"
                 style={{ width: `${(step / (STEPS.length - 1)) * 100}%` }}
               />
             </div>
@@ -282,8 +282,8 @@ function NewListingPage() {
                         className={[
                           'flex flex-col items-center gap-1.5 rounded-xl border-2 px-2 py-3 text-xs font-semibold transition hover:-translate-y-0.5',
                           categoryId === c.id
-                            ? 'border-[var(--lagoon-deep)] bg-[rgba(79,184,178,0.12)] text-[var(--lagoon-deep)]'
-                            : 'border-[var(--line)] bg-[var(--surface-strong)] text-[var(--sea-ink-soft)]',
+                            ? 'border-[var(--brand)] bg-[rgba(139,69,19,0.12)] text-[var(--brand)]'
+                            : 'border-[var(--line)] bg-[var(--surface-strong)] text-[var(--text-soft)]',
                         ].join(' ')}
                       >
                         <span className="text-2xl">{c.icon}</span>
@@ -356,7 +356,7 @@ function NewListingPage() {
                   hint="Tip: price 20–30% below replacement cost per week to attract renters"
                 >
                   <div className="relative">
-                    <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-sm font-bold text-[var(--sea-ink-soft)]">
+                    <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-sm font-bold text-[var(--text-soft)]">
                       ₹
                     </span>
                     <input
@@ -377,7 +377,7 @@ function NewListingPage() {
                   hint="Refundable amount held until the item is returned in good condition. Leave blank for no deposit."
                 >
                   <div className="relative">
-                    <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-sm font-bold text-[var(--sea-ink-soft)]">
+                    <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-sm font-bold text-[var(--text-soft)]">
                       ₹
                     </span>
                     <input
@@ -395,7 +395,7 @@ function NewListingPage() {
                 {/* Earnings preview */}
                 {Number(pricePerDay) > 0 && (
                   <div className="rounded-xl bg-[var(--sand)] p-4">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--sea-ink-soft)]">
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-[var(--text-soft)]">
                       Estimated earnings
                     </p>
                     <div className="grid grid-cols-3 gap-3 text-center">
@@ -405,15 +405,15 @@ function NewListingPage() {
                         { label: '1 month', days: 30 },
                       ].map(({ label, days }) => (
                         <div key={label} className="rounded-lg border border-[var(--line)] bg-[var(--surface-strong)] p-3">
-                          <p className="text-lg font-bold text-[var(--lagoon-deep)]">
+                          <p className="text-lg font-bold text-[var(--brand)]">
                             ₹{(Number(pricePerDay) * days).toLocaleString('en-IN')}
                           </p>
-                          <p className="text-xs text-[var(--sea-ink-soft)]">{label}</p>
+                          <p className="text-xs text-[var(--text-soft)]">{label}</p>
                         </div>
                       ))}
                     </div>
                     {securityDeposit && Number(securityDeposit) > 0 && (
-                      <p className="mt-3 text-xs text-[var(--sea-ink-soft)]">
+                      <p className="mt-3 text-xs text-[var(--text-soft)]">
                         + ₹{Number(securityDeposit).toLocaleString('en-IN')} refundable deposit collected at booking
                       </p>
                     )}
@@ -436,14 +436,14 @@ function NewListingPage() {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={images.length >= 10}
-                  className="flex w-full flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-[var(--lagoon)] bg-[rgba(79,184,178,0.06)] px-6 py-10 text-center transition hover:bg-[rgba(79,184,178,0.12)] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex w-full flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-[var(--brand)] bg-[rgba(139,69,19,0.06)] px-6 py-10 text-center transition hover:bg-[rgba(139,69,19,0.12)] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span className="text-4xl">📷</span>
                   <div>
-                    <p className="font-semibold text-[var(--lagoon-deep)]">
+                    <p className="font-semibold text-[var(--brand)]">
                       {images.length === 0 ? 'Upload photos' : 'Add more photos'}
                     </p>
-                    <p className="mt-0.5 text-xs text-[var(--sea-ink-soft)]">
+                    <p className="mt-0.5 text-xs text-[var(--text-soft)]">
                       JPG, PNG, WEBP · Max 10MB each · Up to {10 - images.length} more
                     </p>
                   </div>
@@ -470,7 +470,7 @@ function NewListingPage() {
 
                         {/* Cover badge */}
                         {i === 0 && (
-                          <span className="absolute left-1.5 top-1.5 rounded-full bg-[var(--lagoon-deep)] px-2 py-0.5 text-[10px] font-bold text-white">
+                          <span className="absolute left-1.5 top-1.5 rounded-full bg-[var(--brand)] px-2 py-0.5 text-[10px] font-bold text-white">
                             Cover
                           </span>
                         )}
@@ -529,7 +529,7 @@ function NewListingPage() {
                 )}
 
                 {images.length === 0 && (
-                  <p className="text-center text-sm text-[var(--sea-ink-soft)]">
+                  <p className="text-center text-sm text-[var(--text-soft)]">
                     At least 1 photo is required to publish.
                   </p>
                 )}
@@ -603,14 +603,14 @@ function NewListingPage() {
                 {/* Coordinates */}
                 <div>
                   <div className="mb-2 flex items-center justify-between">
-                    <label className="text-sm font-semibold text-[var(--sea-ink)]">
+                    <label className="text-sm font-semibold text-[var(--text-dark)]">
                       Coordinates <span className="text-red-500">*</span>
                     </label>
                     <button
                       type="button"
                       onClick={detectLocation}
                       disabled={geoLoading}
-                      className="flex items-center gap-1.5 rounded-full border border-[rgba(50,143,151,0.3)] bg-[rgba(79,184,178,0.1)] px-3 py-1 text-xs font-semibold text-[var(--lagoon-deep)] transition hover:bg-[rgba(79,184,178,0.2)] disabled:opacity-60"
+                      className="flex items-center gap-1.5 rounded-full border border-[rgba(139,69,19,0.3)] bg-[rgba(139,69,19,0.1)] px-3 py-1 text-xs font-semibold text-[var(--brand)] transition hover:bg-[rgba(139,69,19,0.2)] disabled:opacity-60"
                     >
                       {geoLoading ? (
                         <>
@@ -641,7 +641,7 @@ function NewListingPage() {
                       className={inputCls}
                     />
                   </div>
-                  <p className="mt-1.5 text-xs text-[var(--sea-ink-soft)]">
+                  <p className="mt-1.5 text-xs text-[var(--text-soft)]">
                     💡 Or look up coordinates at{' '}
                     <a
                       href="https://www.latlong.net"
@@ -673,12 +673,12 @@ function NewListingPage() {
               type="button"
               onClick={() => setStep((s) => s - 1)}
               disabled={step === 0}
-              className="rounded-full border border-[var(--line)] bg-[var(--surface-strong)] px-6 py-2.5 text-sm font-semibold text-[var(--sea-ink-soft)] transition hover:-translate-y-0.5 disabled:invisible"
+              className="rounded-full border border-[var(--line)] bg-[var(--surface-strong)] px-6 py-2.5 text-sm font-semibold text-[var(--text-soft)] transition hover:-translate-y-0.5 disabled:invisible"
             >
               ← Back
             </button>
 
-            <p className="text-xs text-[var(--sea-ink-soft)]">
+            <p className="text-xs text-[var(--text-soft)]">
               Step {step + 1} of {STEPS.length}
             </p>
 
@@ -686,7 +686,7 @@ function NewListingPage() {
               <button
                 type="submit"
                 disabled={submitting || !canAdvance()}
-                className="rounded-full bg-[var(--lagoon-deep)] px-8 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--lagoon)] disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-full bg-[var(--brand)] px-8 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--brand-light)] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {submitting ? 'Publishing…' : '🚀 Publish listing'}
               </button>
@@ -695,7 +695,7 @@ function NewListingPage() {
                 type="button"
                 onClick={() => setStep((s) => s + 1)}
                 disabled={!canAdvance()}
-                className="rounded-full bg-[var(--lagoon-deep)] px-8 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--lagoon)] disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-full bg-[var(--brand)] px-8 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--brand-light)] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Next →
               </button>
@@ -710,7 +710,7 @@ function NewListingPage() {
 // ── Small helper components ───────────────────────────────────────────────────
 
 const inputCls =
-  'w-full rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-2.5 text-sm text-[var(--sea-ink)] outline-none focus:border-[var(--lagoon)] focus:ring-2 focus:ring-[rgba(79,184,178,0.25)]'
+  'w-full rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-2.5 text-sm text-[var(--text-dark)] outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[rgba(79,184,178,0.25)]'
 
 function SectionHeader({
   icon,
@@ -723,12 +723,12 @@ function SectionHeader({
 }) {
   return (
     <div className="mb-2">
-      <h2 className="flex items-center gap-2 text-xl font-bold text-[var(--sea-ink)]">
+      <h2 className="flex items-center gap-2 text-xl font-bold text-[var(--text-dark)]">
         <span>{icon}</span>
         {title}
       </h2>
       {subtitle && (
-        <p className="mt-1 text-sm text-[var(--sea-ink-soft)]">{subtitle}</p>
+        <p className="mt-1 text-sm text-[var(--text-soft)]">{subtitle}</p>
       )}
     </div>
   )
@@ -747,13 +747,13 @@ function Field({
 }) {
   return (
     <div>
-      <label className="mb-1 block text-sm font-semibold text-[var(--sea-ink)]">
+      <label className="mb-1 block text-sm font-semibold text-[var(--text-dark)]">
         {label}
         {required && <span className="ml-0.5 text-red-500">*</span>}
       </label>
       {children}
       {hint && (
-        <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">{hint}</p>
+        <p className="mt-1 text-xs text-[var(--text-soft)]">{hint}</p>
       )}
     </div>
   )

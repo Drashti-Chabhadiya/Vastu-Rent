@@ -1,113 +1,170 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
-import { auth } from '../lib/api'
-import { authStore } from '../lib/auth-store'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { auth } from '@/lib/api'
+import { useAuthStore } from '@/lib/auth-store'
 
-export const Route = createFileRoute('/auth/register')({
-  component: RegisterPage,
-})
+export const Route = createFileRoute('/auth/register')({ component: RegisterPage })
+
+// ── Zod schema ────────────────────────────────────────────────────────────────
+
+const registerSchema = z
+  .object({
+    name:            z.string().min(2, 'Name must be at least 2 characters').max(80),
+    email:           z.string().email('Enter a valid email address'),
+    password:        z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: 'Passwords do not match',
+    path:    ['confirmPassword'],
+  })
+
+type RegisterForm = z.infer<typeof registerSchema>
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 function RegisterPage() {
   const navigate = useNavigate()
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const setAuth  = useAuthStore((s) => s.setAuth)
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterForm>({ resolver: zodResolver(registerSchema) })
+
+  async function onSubmit(data: RegisterForm) {
     try {
-      const res = await auth.register({ name, email, password })
-      authStore.setAuth(res.token, res.user)
+      const res = await auth.register({
+        name:     data.name,
+        email:    data.email,
+        password: data.password,
+      })
+      setAuth(res.accessToken, res.user)
       navigate({ to: '/auth/complete-profile' })
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Registration failed')
-    } finally {
-      setLoading(false)
+      setError('root', {
+        message: err instanceof Error ? err.message : 'Registration failed',
+      })
     }
   }
 
   return (
     <main className="page-wrap flex min-h-[70vh] items-center justify-center px-4 py-12">
-      <div className="island-shell w-full max-w-md rounded-2xl p-8">
-        <p className="island-kicker mb-2">Join Vastu-Rent</p>
-        <h1 className="display-title mb-6 text-3xl font-bold text-[var(--sea-ink)]">
-          Create an account
-        </h1>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-[var(--sea-ink)]">
-              Full name
-            </label>
-            <input
-              type="text"
-              required
-              autoComplete="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-2.5 text-sm outline-none focus:border-[var(--lagoon)]"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-[var(--sea-ink)]">
-              Email
-            </label>
-            <input
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-2.5 text-sm outline-none focus:border-[var(--lagoon)]"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-[var(--sea-ink)]">
-              Password
-            </label>
-            <input
-              type="password"
-              required
-              minLength={8}
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-2.5 text-sm outline-none focus:border-[var(--lagoon)]"
-            />
-            <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
-              Minimum 8 characters
-            </p>
-          </div>
-
-          {error && (
-            <p className="rounded-xl bg-red-50 px-4 py-2 text-sm text-red-600">
-              {error}
-            </p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-full bg-[var(--lagoon-deep)] py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--lagoon)] disabled:opacity-60"
+      <Card
+        className="w-full max-w-md"
+        style={{ background: 'var(--surface-strong)', border: '1px solid var(--line)' }}
+      >
+        <CardHeader className="pb-4">
+          <p className="island-kicker mb-1">Join VastuRent</p>
+          <CardTitle
+            className="display-title text-3xl"
+            style={{ color: 'var(--text-dark)' }}
           >
-            {loading ? 'Creating account…' : 'Create account'}
-          </button>
-        </form>
+            Create an account
+          </CardTitle>
+          <CardDescription style={{ color: 'var(--text-soft)' }}>
+            Start renting beautiful pieces today
+          </CardDescription>
+        </CardHeader>
 
-        <p className="mt-6 text-center text-sm text-[var(--sea-ink-soft)]">
-          Already have an account?{' '}
-          <Link
-            to="/auth/login"
-            className="font-semibold text-[var(--lagoon-deep)]"
-          >
-            Sign in
-          </Link>
-        </p>
-      </div>
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+            {/* Name */}
+            <div className="space-y-1.5">
+              <Label htmlFor="name">Full name</Label>
+              <Input
+                id="name"
+                type="text"
+                autoComplete="name"
+                placeholder="Arjun Sharma"
+                aria-invalid={!!errors.name}
+                {...register('name')}
+              />
+              {errors.name && (
+                <p className="text-xs text-red-600">{errors.name.message}</p>
+              )}
+            </div>
+
+            {/* Email */}
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                aria-invalid={!!errors.email}
+                {...register('email')}
+              />
+              {errors.email && (
+                <p className="text-xs text-red-600">{errors.email.message}</p>
+              )}
+            </div>
+
+            {/* Password */}
+            <div className="space-y-1.5">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="new-password"
+                placeholder="Min. 8 characters"
+                aria-invalid={!!errors.password}
+                {...register('password')}
+              />
+              {errors.password && (
+                <p className="text-xs text-red-600">{errors.password.message}</p>
+              )}
+            </div>
+
+            {/* Confirm password */}
+            <div className="space-y-1.5">
+              <Label htmlFor="confirmPassword">Confirm password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                autoComplete="new-password"
+                placeholder="Repeat your password"
+                aria-invalid={!!errors.confirmPassword}
+                {...register('confirmPassword')}
+              />
+              {errors.confirmPassword && (
+                <p className="text-xs text-red-600">{errors.confirmPassword.message}</p>
+              )}
+            </div>
+
+            {/* Root / server error */}
+            {errors.root && (
+              <div className="rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-700">
+                {errors.root.message}
+              </div>
+            )}
+
+            <Button type="submit" disabled={isSubmitting} className="w-full" size="lg">
+              {isSubmitting ? 'Creating account…' : 'Create account'}
+            </Button>
+          </form>
+
+          <p className="mt-6 text-center text-sm" style={{ color: 'var(--text-soft)' }}>
+            Already have an account?{' '}
+            <Link
+              to="/auth/login"
+              className="font-semibold"
+              style={{ color: 'var(--brand)' }}
+            >
+              Sign in
+            </Link>
+          </p>
+        </CardContent>
+      </Card>
     </main>
   )
 }

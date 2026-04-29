@@ -5,7 +5,7 @@ import SuperAdminPanel from './SuperAdminPanel'
 // ── Shared input style ────────────────────────────────────────────────────────
 
 const inputCls =
-  'w-full rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-2.5 text-sm text-[var(--sea-ink)] outline-none focus:border-[var(--lagoon)] focus:ring-2 focus:ring-[rgba(79,184,178,0.25)]'
+  'w-full rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] px-4 py-2.5 text-sm text-[var(--text-dark)] outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[rgba(79,184,178,0.25)]'
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
@@ -234,10 +234,10 @@ export default function AdminPanel({ initialListings, cats: initialCats, isSuper
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-[var(--sea-ink)]">
+          <h2 className="text-xl font-bold text-[var(--text-dark)]">
             ⚙️ My Listings
           </h2>
-          <p className="text-sm text-[var(--sea-ink-soft)]">
+          <p className="text-sm text-[var(--text-soft)]">
             {isSuperAdmin
               ? 'Your own listings — new ones go live immediately'
               : 'New listings need Super Admin approval before going live'}
@@ -245,7 +245,7 @@ export default function AdminPanel({ initialListings, cats: initialCats, isSuper
         </div>
         <button
           onClick={openCreate}
-          className="rounded-full bg-[var(--lagoon-deep)] px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--lagoon)]"
+          className="rounded-full bg-[var(--brand)] px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--brand-light)]"
         >
           + Add New Product
         </button>
@@ -267,12 +267,12 @@ export default function AdminPanel({ initialListings, cats: initialCats, isSuper
       {showForm && (
         <div className="island-shell rounded-2xl p-6">
           <div className="mb-5 flex items-center justify-between">
-            <h3 className="text-lg font-bold text-[var(--sea-ink)]">
+            <h3 className="text-lg font-bold text-[var(--text-dark)]">
               {editTarget ? '✏️ Edit Listing' : '➕ Add New Product'}
             </h3>
             <button
               onClick={() => { setShowForm(false); resetForm() }}
-              className="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold text-[var(--sea-ink-soft)] hover:text-red-600"
+              className="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold text-[var(--text-soft)] hover:text-red-600"
             >
               ✕ Cancel
             </button>
@@ -281,7 +281,7 @@ export default function AdminPanel({ initialListings, cats: initialCats, isSuper
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Title */}
             <div>
-              <label className="mb-1 block text-sm font-semibold text-[var(--sea-ink)]">
+              <label className="mb-1 block text-sm font-semibold text-[var(--text-dark)]">
                 Title <span className="text-red-500">*</span>
               </label>
               <input
@@ -298,7 +298,7 @@ export default function AdminPanel({ initialListings, cats: initialCats, isSuper
 
             {/* Category */}
             <div>
-              <label className="mb-1 block text-sm font-semibold text-[var(--sea-ink)]">
+              <label className="mb-1 block text-sm font-semibold text-[var(--text-dark)]">
                 Category <span className="text-red-500">*</span>
               </label>
               <select
@@ -318,7 +318,7 @@ export default function AdminPanel({ initialListings, cats: initialCats, isSuper
 
             {/* Description */}
             <div>
-              <label className="mb-1 block text-sm font-semibold text-[var(--sea-ink)]">
+              <label className="mb-1 block text-sm font-semibold text-[var(--text-dark)]">
                 Description <span className="text-red-500">*</span>
               </label>
               <textarea
@@ -336,11 +336,11 @@ export default function AdminPanel({ initialListings, cats: initialCats, isSuper
             {/* Pricing */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-1 block text-sm font-semibold text-[var(--sea-ink)]">
+                <label className="mb-1 block text-sm font-semibold text-[var(--text-dark)]">
                   Rental Price / Day (₹) <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-sm font-bold text-[var(--sea-ink-soft)]">₹</span>
+                  <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-sm font-bold text-[var(--text-soft)]">₹</span>
                   <input
                     type="number"
                     required
@@ -354,11 +354,11 @@ export default function AdminPanel({ initialListings, cats: initialCats, isSuper
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-semibold text-[var(--sea-ink)]">
+                <label className="mb-1 block text-sm font-semibold text-[var(--text-dark)]">
                   Security Deposit (₹)
                 </label>
                 <div className="relative">
-                  <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-sm font-bold text-[var(--sea-ink-soft)]">₹</span>
+                  <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-sm font-bold text-[var(--text-soft)]">₹</span>
                   <input
                     type="number"
                     min="0"
@@ -375,18 +375,18 @@ export default function AdminPanel({ initialListings, cats: initialCats, isSuper
             {/* Rental duration */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-1 block text-sm font-semibold text-[var(--sea-ink)]">Min Rental Days</label>
+                <label className="mb-1 block text-sm font-semibold text-[var(--text-dark)]">Min Rental Days</label>
                 <input type="number" min="1" max="365" value={minRentalDays} onChange={(e) => setMinRentalDays(e.target.value)} className={inputCls} />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-semibold text-[var(--sea-ink)]">Max Rental Days</label>
+                <label className="mb-1 block text-sm font-semibold text-[var(--text-dark)]">Max Rental Days</label>
                 <input type="number" min="1" max="365" value={maxRentalDays} onChange={(e) => setMaxRentalDays(e.target.value)} className={inputCls} />
               </div>
             </div>
 
             {/* Tags */}
             <div>
-              <label className="mb-1 block text-sm font-semibold text-[var(--sea-ink)]">Tags</label>
+              <label className="mb-1 block text-sm font-semibold text-[var(--text-dark)]">Tags</label>
               <input
                 type="text"
                 value={tags}
@@ -398,14 +398,14 @@ export default function AdminPanel({ initialListings, cats: initialCats, isSuper
 
             {/* Images */}
             <div>
-              <label className="mb-1 block text-sm font-semibold text-[var(--sea-ink)]">
+              <label className="mb-1 block text-sm font-semibold text-[var(--text-dark)]">
                 Photos <span className="text-red-500">*</span>
               </label>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingImages || imageUrls.length >= 10}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--lagoon)] bg-[rgba(79,184,178,0.06)] px-4 py-4 text-sm font-semibold text-[var(--lagoon-deep)] transition hover:bg-[rgba(79,184,178,0.12)] disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[var(--brand)] bg-[rgba(139,69,19,0.06)] px-4 py-4 text-sm font-semibold text-[var(--brand)] transition hover:bg-[rgba(139,69,19,0.12)] disabled:opacity-50"
               >
                 {uploadingImages ? '⏳ Uploading…' : '📷 Upload Photos'}
               </button>
@@ -437,7 +437,7 @@ export default function AdminPanel({ initialListings, cats: initialCats, isSuper
 
             {/* Location */}
             <div className="space-y-3 rounded-xl border border-[var(--line)] bg-[var(--surface-strong)] p-4">
-              <p className="text-sm font-semibold text-[var(--sea-ink)]">📍 Location</p>
+              <p className="text-sm font-semibold text-[var(--text-dark)]">📍 Location</p>
               <input type="text" required value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street Address *" className={inputCls} />
               <div className="grid grid-cols-2 gap-3">
                 <input type="text" required value={city} onChange={(e) => setCity(e.target.value)} placeholder="City *" className={inputCls} />
@@ -455,7 +455,7 @@ export default function AdminPanel({ initialListings, cats: initialCats, isSuper
                   onClick={detectLocation}
                   disabled={geoLoading}
                   title="Use my location"
-                  className="shrink-0 rounded-xl border border-[rgba(50,143,151,0.3)] bg-[rgba(79,184,178,0.1)] px-3 py-2.5 text-sm font-semibold text-[var(--lagoon-deep)] transition hover:bg-[rgba(79,184,178,0.2)] disabled:opacity-60"
+                  className="shrink-0 rounded-xl border border-[rgba(139,69,19,0.3)] bg-[rgba(139,69,19,0.1)] px-3 py-2.5 text-sm font-semibold text-[var(--brand)] transition hover:bg-[rgba(139,69,19,0.2)] disabled:opacity-60"
                 >
                   {geoLoading ? '⏳' : '📡'}
                 </button>
@@ -467,14 +467,14 @@ export default function AdminPanel({ initialListings, cats: initialCats, isSuper
               <button
                 type="button"
                 onClick={() => { setShowForm(false); resetForm() }}
-                className="rounded-full border border-[var(--line)] px-6 py-2.5 text-sm font-semibold text-[var(--sea-ink-soft)] transition hover:-translate-y-0.5"
+                className="rounded-full border border-[var(--line)] px-6 py-2.5 text-sm font-semibold text-[var(--text-soft)] transition hover:-translate-y-0.5"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={submitting || imageUrls.length === 0}
-                className="rounded-full bg-[var(--lagoon-deep)] px-8 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--lagoon)] disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-full bg-[var(--brand)] px-8 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[var(--brand-light)] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {submitting ? 'Saving…' : editTarget ? '💾 Save Changes' : '🚀 Publish Listing'}
               </button>
@@ -486,7 +486,7 @@ export default function AdminPanel({ initialListings, cats: initialCats, isSuper
       {/* ── My Listings Table ────────────────────────────────────────────────── */}
       <div className="island-shell rounded-2xl overflow-hidden">
         <div className="border-b border-[var(--line)] px-5 py-4">
-          <h3 className="font-semibold text-[var(--sea-ink)]">
+          <h3 className="font-semibold text-[var(--text-dark)]">
             My Listings ({listings.filter((l) => l.status !== 'DELETED').length})
           </h3>
         </div>
@@ -494,11 +494,11 @@ export default function AdminPanel({ initialListings, cats: initialCats, isSuper
         {listings.filter((l) => l.status !== 'DELETED').length === 0 ? (
           <div className="p-10 text-center">
             <p className="mb-2 text-4xl">📦</p>
-            <p className="font-semibold text-[var(--sea-ink)]">No listings yet</p>
-            <p className="mb-4 text-sm text-[var(--sea-ink-soft)]">Add your first product to start earning</p>
+            <p className="font-semibold text-[var(--text-dark)]">No listings yet</p>
+            <p className="mb-4 text-sm text-[var(--text-soft)]">Add your first product to start earning</p>
             <button
               onClick={openCreate}
-              className="rounded-full bg-[var(--lagoon-deep)] px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5"
+              className="rounded-full bg-[var(--brand)] px-5 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5"
             >
               + Add Product
             </button>
@@ -520,8 +520,8 @@ export default function AdminPanel({ initialListings, cats: initialCats, isSuper
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="truncate font-semibold text-[var(--sea-ink)]">{listing.title}</p>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-[var(--sea-ink-soft)]">
+                    <p className="truncate font-semibold text-[var(--text-dark)]">{listing.title}</p>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-[var(--text-soft)]">
                       <span>{listing.category.icon} {listing.category.name}</span>
                       <span>·</span>
                       <span>₹{Number(listing.pricePerDay).toLocaleString('en-IN')}/day</span>
@@ -534,7 +534,7 @@ export default function AdminPanel({ initialListings, cats: initialCats, isSuper
                       <span>·</span>
                       <span>📍 {listing.city}</span>
                     </div>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-[var(--sea-ink-soft)]">
+                    <div className="mt-1 flex items-center gap-2 text-xs text-[var(--text-soft)]">
                       <span>📦 {listing._count.bookings} bookings</span>
                       <span>·</span>
                       <span>⭐ {listing._count.reviews} reviews</span>
@@ -568,7 +568,7 @@ export default function AdminPanel({ initialListings, cats: initialCats, isSuper
                     {/* Edit */}
                     <button
                       onClick={() => openEdit(listing)}
-                      className="rounded-full border border-[var(--line)] bg-[var(--surface-strong)] px-3 py-1.5 text-xs font-semibold text-[var(--sea-ink-soft)] transition hover:-translate-y-0.5 hover:text-[var(--sea-ink)]"
+                      className="rounded-full border border-[var(--line)] bg-[var(--surface-strong)] px-3 py-1.5 text-xs font-semibold text-[var(--text-soft)] transition hover:-translate-y-0.5 hover:text-[var(--text-dark)]"
                     >
                       ✏️ Edit
                     </button>
