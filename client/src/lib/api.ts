@@ -4,13 +4,19 @@
  * - Access token read from in-memory authStore (never localStorage)
  * - Every request sends `credentials: 'include'` so the HttpOnly refresh
  *   cookie is forwarded automatically
- * - On 401: one silent refresh attempt, then retry the original request
- * - On second 401: clear auth and throw
+ * - On 401 (browser only): one silent refresh attempt, then retry
+ * - On server (SSR): never clears auth state, just throws
  */
 
 import { authStore } from './auth-store'
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api'
+// Lazy — evaluated at call time so Vite env vars are available in the browser
+// and SSR doesn't try to call localhost:4000 from the server process.
+function getBaseUrl(): string {
+  return import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api'
+}
+
+const IS_SERVER = typeof window === 'undefined'
 
 // ── Error class ───────────────────────────────────────────────────────────────
 
@@ -32,17 +38,23 @@ async function getValidAccessToken(): Promise<string | null> {
   const snap = authStore.getSnapshot()
   if (snap.accessToken) return snap.accessToken
 
-  // No token yet — run (or join) the singleton silent refresh
+  // On the server there is no cookie, no browser — return null immediately.
+  // The loader's .catch(() => []) will handle the missing data gracefully.
+  if (IS_SERVER) return null
+
+  // Browser: run (or join) the singleton silent refresh
   return authStore.silentRefresh()
 }
 
 // ── Core request function ─────────────────────────────────────────────────────
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const BASE_URL = getBaseUrl()
   const token = await getValidAccessToken()
 
+  const hasBody = options.body !== undefined && options.body !== null
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
     ...(options.headers as Record<string, string>),
   }
   if (token) headers['Authorization'] = `Bearer ${token}`
@@ -50,23 +62,28 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
     headers,
-    credentials: 'include', // always send cookies (refresh token)
+    credentials: 'include',
   })
 
-  // ── Silent refresh on 401 ─────────────────────────────────────────────────
+  // ── Silent refresh on 401 (browser only) ─────────────────────────────────
   if (res.status === 401) {
-    // Try to get a fresh access token via the refresh cookie
+    // On the server, never attempt a refresh — just throw so the loader's
+    // .catch() can return empty data without corrupting auth state.
+    if (IS_SERVER) {
+      throw new ApiError(401, 'Unauthenticated')
+    }
+
+    // Browser: try to get a fresh access token via the refresh cookie
     const newToken = await authStore.silentRefresh()
 
     if (!newToken) {
-      // Refresh failed — session is dead
       authStore.clearAuth()
       throw new ApiError(401, 'Session expired. Please sign in again.')
     }
 
-    // Retry the original request with the new token
+    // Retry with the new token
     const retryHeaders: Record<string, string> = {
-      'Content-Type': 'application/json',
+      ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
       ...(options.headers as Record<string, string>),
       Authorization: `Bearer ${newToken}`,
     }

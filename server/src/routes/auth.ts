@@ -166,7 +166,6 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/logout', async (request, reply) => {
     const rawToken = (request.cookies as Record<string, string | undefined>)[REFRESH_COOKIE]
     if (rawToken) {
-      // Best-effort revocation — don't fail if token not found
       const record = await findRefreshToken(rawToken)
       if (record) {
         await prisma.refreshToken.update({
@@ -225,32 +224,33 @@ function signAccessToken(
  * Returns the raw (unhashed) token to be sent to the client.
  */
 async function createRefreshToken(userId: string): Promise<string> {
-  const raw  = crypto.randomBytes(48).toString('hex') // 96-char hex string
-  const hash = await bcrypt.hash(raw, 10)
+  const raw    = crypto.randomBytes(48).toString('hex') // 96-char hex string
+  const prefix = raw.slice(0, 16)                       // fast lookup key
+  const hash   = await bcrypt.hash(raw, 10)
   const expiresAt = new Date(Date.now() + REFRESH_EXPIRES_MS)
 
   await prisma.refreshToken.create({
-    data: { tokenHash: hash, userId, expiresAt },
+    data: { tokenHash: hash, tokenPrefix: prefix, userId, expiresAt },
   })
 
   return raw
 }
 
 /**
- * Find a valid (non-revoked, non-expired) refresh token record by comparing
- * the raw token against all active hashes for the user.
+ * Find a valid (non-revoked, non-expired) refresh token record.
  *
- * We can't do a direct DB lookup by hash (bcrypt is not deterministic), so we
- * fetch recent active tokens and compare. We limit to 10 to keep it fast.
+ * Uses tokenPrefix for an indexed lookup (O(1) DB query) then bcrypt-verifies
+ * the single matching candidate — no full-table scan.
  */
 async function findRefreshToken(raw: string) {
+  const prefix = raw.slice(0, 16)
+
   const candidates = await prisma.refreshToken.findMany({
     where: {
-      revokedAt: null,
-      expiresAt: { gt: new Date() },
+      tokenPrefix: prefix,
+      revokedAt:   null,
+      expiresAt:   { gt: new Date() },
     },
-    orderBy: { createdAt: 'desc' },
-    take: 20, // safety cap
   })
 
   for (const record of candidates) {

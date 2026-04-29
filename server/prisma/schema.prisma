@@ -215,15 +215,17 @@ model Message {
 // ─── RefreshToken ─────────────────────────────────────────────────────────────
 
 model RefreshToken {
-  id        String   @id @default(cuid())
-  tokenHash String   @unique          // bcrypt hash of the raw token
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  revokedAt DateTime?                 // null = still valid
+  id          String   @id @default(cuid())
+  tokenHash   String   @unique          // bcrypt hash of the raw token
+  tokenPrefix String                    // first 16 chars — fast indexed lookup
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  revokedAt   DateTime?                 // null = still valid
 
   @@index([userId])
+  @@index([tokenPrefix])               // fast lookup before bcrypt verify
   @@map("refresh_tokens")
 }
 
